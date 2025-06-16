@@ -2,11 +2,21 @@
   "version": 2,
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
-  "framework": null,
-  "rewrites": [
+  "installCommand": "npm install",
+  "devCommand": "npm run dev",
+  "builds": [
     {
-      "source": "/(.*)",
-      "destination": "/index.js"
+      "src": "dist/index.js",
+      "use": "@vercel/node"
     }
-  ]
+  ],
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "dist/index.js"
+    }
+  ],
+  "env": {
+    "NODE_ENV": "production"
+  }
 }
