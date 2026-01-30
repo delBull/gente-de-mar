@@ -5,7 +5,10 @@
       "src": "server/index.ts",
       "use": "@vercel/node",
       "config": {
-        "maxDuration": 10
+        "maxDuration": 10,
+        "includeFiles": [
+          "dist/public/**"
+        ]
       }
     }
   ],

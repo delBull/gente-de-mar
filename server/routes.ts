@@ -4,10 +4,13 @@ import { storage } from "./storage.js";
 import { insertTransactionSchema, insertTourSchema, insertBookingSchema, insertSeatHoldSchema, insertTicketRedemptionSchema } from "../shared/schema.js";
 import { nanoid } from "nanoid";
 import { generateAlphanumericCode, canRedeemTickets, canCreateTours } from "../shared/utils.js";
+import { log } from "./vite.js";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Initialize database with users on server start
+  log("initializing database...");
   await storage.initializeDatabase();
+  log("database initialized");
 
   // Health check endpoints for deployment
   app.get("/health", (req, res) => {
