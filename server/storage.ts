@@ -5,7 +5,7 @@ import {
   type Booking, type InsertBooking, type SeatHold, type InsertSeatHold, type TicketRedemption, type InsertTicketRedemption
 } from "@shared/schema";
 import { eq, desc, and, sql } from "drizzle-orm";
-import { db } from "./db";
+import { db } from "./db.js";
 import { generateAlphanumericCode } from "@shared/utils";
 
 export interface IStorage {
