@@ -24,15 +24,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     // Otherwise, let it fall through to static file serving
     const userAgent = req.get('User-Agent') || '';
     const acceptHeader = req.get('Accept') || '';
-    
+
     // Check if this looks like a health check request
-    if (userAgent.includes('kube-probe') || 
-        userAgent.includes('GoogleHC') || 
-        acceptHeader.includes('application/json') ||
-        req.query.health !== undefined) {
+    if (userAgent.includes('kube-probe') ||
+      userAgent.includes('GoogleHC') ||
+      acceptHeader.includes('application/json') ||
+      req.query.health !== undefined) {
       return res.status(200).json({ status: "ok", message: "Server is running" });
     }
-    
+
     // Let static file serving handle regular browser requests
     next();
   });
@@ -40,20 +40,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/auth/login", async (req, res) => {
     try {
       const { username, password } = req.body;
-      
+
       if (!username || !password) {
         return res.status(400).json({ message: "Usuario y contraseña son requeridos" });
       }
 
       // Authenticate user with exact credentials from database
       const user = await storage.authenticateUser(username, password);
-      
+
       if (!user) {
         return res.status(401).json({ message: "Credenciales inválidas" });
       }
 
       // Return user data with role-based permissions
-      res.json({ 
+      res.json({
         user: {
           id: user.id,
           username: user.username,
@@ -86,22 +86,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
         });
       }
-      
+
       // Clear all possible session cookies
       res.clearCookie('connect.sid', { path: '/' });
       res.clearCookie('session', { path: '/' });
       res.clearCookie('auth', { path: '/' });
-      
+
       // Return success response
-      res.json({ 
-        success: true, 
-        message: "Logged out successfully from customer interface" 
+      res.json({
+        success: true,
+        message: "Logged out successfully from customer interface"
       });
     } catch (error) {
       console.error("Customer logout error:", error);
-      res.json({ 
-        success: true, 
-        message: "Logged out (fallback)" 
+      res.json({
+        success: true,
+        message: "Logged out (fallback)"
       });
     }
   });
@@ -213,12 +213,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const seatHoldData = insertSeatHoldSchema.parse(req.body);
       const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes from now
-      
+
       const seatHold = await storage.createSeatHold({
         ...seatHoldData,
         expiresAt
       });
-      
+
       res.json(seatHold);
     } catch (error) {
       res.status(400).json({ message: "Invalid seat hold data" });
@@ -230,7 +230,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       // Log the incoming data for debugging
       console.log("Booking request body:", req.body);
-      
+
       // Parse the booking data with optional fields
       const bookingData = {
         tourId: parseInt(req.body.tourId),
@@ -244,11 +244,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         totalAmount: req.body.totalAmount.toString(),
         specialRequests: req.body.specialRequests || null
       };
-      
+
       // Generate QR code data and alphanumeric code
       const qrCode = nanoid();
       const alphanumericCode = generateAlphanumericCode();
-      
+
       const booking = await storage.createBooking({
         ...bookingData,
         qrCode,
@@ -256,7 +256,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         status: "confirmed",
         reservedUntil: new Date(Date.now() + 15 * 60 * 1000)
       });
-      
+
 
       res.json(booking);
     } catch (error) {
@@ -293,14 +293,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const id = parseInt(req.params.id);
       console.log(`Fetching booking with ID: ${id}`);
-      
+
       if (isNaN(id)) {
         return res.status(400).json({ message: "Invalid booking ID" });
       }
-      
+
       const booking = await storage.getBooking(id);
       console.log(`Booking found:`, booking);
-      
+
       if (!booking) {
         console.log(`Booking with ID ${id} not found`);
         // Let's also check all bookings to see what's available
@@ -312,7 +312,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get tour details
       const tour = await storage.getTour(booking.tourId);
       console.log(`Tour found:`, tour);
-      
+
       // Return booking with tour information
       const bookingWithTour = {
         ...booking,
@@ -327,11 +327,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           requirements: tour.requirements
         } : null
       };
-      
+
       res.json(bookingWithTour);
     } catch (error) {
       console.error("Error fetching booking:", error);
-      res.status(500).json({ message: "Error fetching booking", error: error.message });
+      res.status(500).json({ message: "Error fetching booking", error: (error as Error).message });
     }
   });
 
@@ -339,17 +339,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/validate-ticket", async (req, res) => {
     try {
       const { qrCode } = req.body;
-      
+
       if (!qrCode) {
         return res.status(400).json({ message: "QR code is required" });
       }
-      
+
       const booking = await storage.getBookingByQR(qrCode);
-      
+
       if (!booking) {
         return res.status(404).json({ message: "Ticket not found" });
       }
-      
+
       res.json(booking);
     } catch (error) {
       res.status(500).json({ message: "Error validating ticket" });
@@ -360,20 +360,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/validate-ticket-code", async (req, res) => {
     try {
       const { alphanumericCode } = req.body;
-      
+
       if (!alphanumericCode) {
         return res.status(400).json({ message: "Alphanumeric code is required" });
       }
-      
+
       const booking = await storage.getBookingByAlphanumericCode(alphanumericCode);
-      
+
       if (!booking) {
         return res.status(404).json({ message: "Ticket not found" });
       }
-      
+
       // Get tour information
       const tour = await storage.getTour(booking.tourId);
-      
+
       // Return booking with tour information
       const bookingWithTour = {
         ...booking,
@@ -388,7 +388,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           requirements: tour.requirements
         } : null
       };
-      
+
       res.json(bookingWithTour);
     } catch (error) {
       res.status(500).json({ message: "Error validating ticket" });
@@ -401,30 +401,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { bookingId, method, notes } = req.body;
       const userId = req.session?.user?.id;
       const userRole = req.session?.user?.role;
-      
+
       if (!userId) {
         return res.status(401).json({ message: "Authentication required" });
       }
-      
-      if (!canRedeemTickets(userRole)) {
+
+      if (!userRole || !canRedeemTickets(userRole)) {
         return res.status(403).json({ message: "Only Business and Manager roles can redeem tickets" });
       }
-      
+
       if (!bookingId || !method) {
         return res.status(400).json({ message: "Booking ID and method are required" });
       }
-      
+
       // Verify booking exists
       const booking = await storage.getBooking(bookingId);
       if (!booking) {
         return res.status(404).json({ message: "Booking not found" });
       }
-      
+
       // Check if already redeemed
       if (booking.redeemedAt) {
         return res.status(400).json({ message: "Ticket already redeemed" });
       }
-      
+
       const redemption = await storage.redeemTicket(bookingId, userId, method, notes);
       res.json(redemption);
     } catch (error) {
@@ -439,11 +439,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.session?.user?.id;
       const userRole = req.session?.user?.role;
       const businessId = req.session?.user?.businessId;
-      
+
       if (!userId) {
         return res.status(401).json({ message: "Authentication required" });
       }
-      
+
       let redemptions;
       if (userRole === 'master_admin') {
         redemptions = await storage.getTicketRedemptions();
@@ -455,7 +455,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } else {
         return res.status(403).json({ message: "Access denied" });
       }
-      
+
       res.json(redemptions);
     } catch (error) {
       console.error("Error fetching ticket redemptions:", error);
@@ -470,7 +470,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { amount } = req.body;
       const config = await storage.getRetentionConfig();
-      
+
       if (!config || !amount) {
         return res.status(400).json({ message: "Missing amount or configuration" });
       }

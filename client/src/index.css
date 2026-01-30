@@ -46,83 +46,85 @@
 }
 
 :root {
-  --background: hsl(210, 40%, 98%);
-  --foreground: hsl(222.2, 84%, 4.9%);
+  /* Light Theme (Fresh Ocean) */
+  --background: hsl(200, 50%, 98%);
+  --foreground: hsl(215, 27%, 17%);
+  
   --card: hsl(0, 0%, 100%);
-  --card-foreground: hsl(222.2, 84%, 4.9%);
+  --card-foreground: hsl(215, 27%, 17%);
+  
   --popover: hsl(0, 0%, 100%);
-  --popover-foreground: hsl(222.2, 84%, 4.9%);
-  --primary: hsl(262.1, 83.3%, 57.8%);
+  --popover-foreground: hsl(215, 27%, 17%);
+  
+  --primary: hsl(199, 89%, 48%); /* Ocean Blue/Cyan */
   --primary-foreground: hsl(210, 40%, 98%);
+  
   --secondary: hsl(210, 40%, 96%);
-  --secondary-foreground: hsl(222.2, 84%, 4.9%);
+  --secondary-foreground: hsl(222.2, 47%, 11%);
+  
   --muted: hsl(210, 40%, 96%);
   --muted-foreground: hsl(215.4, 16.3%, 46.9%);
-  --accent: hsl(210, 40%, 96%);
-  --accent-foreground: hsl(222.2, 84%, 4.9%);
+  
+  --accent: hsl(199, 80%, 95%);
+  --accent-foreground: hsl(222.2, 47%, 11%);
+  
   --destructive: hsl(0, 84.2%, 60.2%);
   --destructive-foreground: hsl(210, 40%, 98%);
+  
   --border: hsl(214.3, 31.8%, 91.4%);
   --input: hsl(214.3, 31.8%, 91.4%);
-  --ring: hsl(262.1, 83.3%, 57.8%);
-  --radius: 0.5rem;
-  --chart-1: hsl(12, 76%, 61%);
-  --chart-2: hsl(173, 58%, 39%);
-  --chart-3: hsl(197, 37%, 24%);
-  --chart-4: hsl(43, 74%, 66%);
-  --chart-5: hsl(27, 87%, 67%);
-  --sidebar-background: hsl(0, 0%, 98%);
-  --sidebar-foreground: hsl(240, 5.3%, 26.1%);
-  --sidebar-primary: hsl(240, 5.9%, 10%);
+  --ring: hsl(199, 89%, 48%);
+  
+  --radius: 0.75rem; /* More rounded premium feel */
+  
+  --sidebar-background: hsl(200, 50%, 98%);
+  --sidebar-foreground: hsl(215, 27%, 17%);
+  --sidebar-primary: hsl(199, 89%, 48%);
   --sidebar-primary-foreground: hsl(0, 0%, 98%);
-  --sidebar-accent: hsl(240, 4.8%, 95.9%);
-  --sidebar-accent-foreground: hsl(240, 5.9%, 10%);
+  --sidebar-accent: hsl(199, 80%, 95%);
+  --sidebar-accent-foreground: hsl(215, 27%, 17%);
   --sidebar-border: hsl(220, 13%, 91%);
-  --sidebar-ring: hsl(217.2, 32.6%, 17.5%);
-
-  /* Custom dark theme colors for Gente de Mar */
-  --dark-primary: hsl(221, 39%, 11%);
-  --dark-secondary: hsl(215, 28%, 17%);
-  --dark-tertiary: hsl(215, 20%, 27%);
-  --accent-green: hsl(82, 69%, 45%);
-  --accent-green-dark: hsl(78, 61%, 40%);
-  --text-primary: hsl(210, 40%, 98%);
-  --text-secondary: hsl(215, 20%, 65%);
+  --sidebar-ring: hsl(199, 89%, 48%);
 }
 
 .dark {
-  --background: hsl(221, 39%, 11%);
+  /* Dark Theme (Deep Sea) */
+  --background: hsl(222, 47%, 11%); /* Deep Navy */
   --foreground: hsl(210, 40%, 98%);
-  --card: hsl(215, 28%, 17%);
+  
+  --card: hsl(217, 33%, 17%); /* Slightly lighter navy for cards */
   --card-foreground: hsl(210, 40%, 98%);
-  --popover: hsl(224, 71.4%, 4.1%);
+  
+  --popover: hsl(222, 47%, 11%);
   --popover-foreground: hsl(210, 40%, 98%);
-  --primary: hsl(82, 69%, 45%);
-  --primary-foreground: hsl(221, 39%, 11%);
-  --secondary: hsl(215, 28%, 17%);
+  
+  --primary: hsl(186, 70%, 50%); /* Bright Turquoise for dark mode contrast */
+  --primary-foreground: hsl(222, 47%, 11%);
+  
+  --secondary: hsl(217, 33%, 20%);
   --secondary-foreground: hsl(210, 40%, 98%);
-  --muted: hsl(215, 20%, 27%);
+  
+  --muted: hsl(217, 33%, 25%);
   --muted-foreground: hsl(215, 20%, 65%);
-  --accent: hsl(215, 28%, 17%);
+  
+  --accent: hsl(217, 33%, 25%);
   --accent-foreground: hsl(210, 40%, 98%);
+  
   --destructive: hsl(0, 62.8%, 30.6%);
   --destructive-foreground: hsl(210, 40%, 98%);
-  --border: hsl(215, 20%, 27%);
-  --input: hsl(215, 20%, 27%);
-  --ring: hsl(82, 69%, 45%);
-  --chart-1: hsl(220, 70%, 50%);
-  --chart-2: hsl(160, 60%, 45%);
-  --chart-3: hsl(30, 80%, 55%);
-  --chart-4: hsl(280, 65%, 60%);
-  --chart-5: hsl(340, 75%, 55%);
-  --sidebar-background: hsl(215, 28%, 17%);
-  --sidebar-foreground: hsl(210, 40%, 98%);
-  --sidebar-primary: hsl(82, 69%, 45%);
-  --sidebar-primary-foreground: hsl(221, 39%, 11%);
-  --sidebar-accent: hsl(215, 20%, 27%);
+  
+  --border: hsl(217, 33%, 25%);
+  --input: hsl(217, 33%, 25%);
+  --ring: hsl(186, 70%, 50%);
+  
+  --sidebar-background: hsl(222, 47%, 10%); /* Darker sidebar */
+  --sidebar-foreground: hsl(215, 20%, 85%);
+  --sidebar-primary: hsl(186, 70%, 50%);
+  --sidebar-primary-foreground: hsl(222, 47%, 11%);
+  --sidebar-accent: hsl(217, 33%, 20%);
   --sidebar-accent-foreground: hsl(210, 40%, 98%);
-  --sidebar-border: hsl(215, 20%, 27%);
-  --sidebar-ring: hsl(82, 69%, 45%);
+  --sidebar-border: hsl(217, 33%, 20%);
+  --sidebar-ring: hsl(186, 70%, 50%);
 }
 
 @layer base {
@@ -131,13 +133,19 @@
   }
   body {
     @apply bg-background text-foreground font-sans antialiased;
+    /* Gentle gradient mesh for a premium texture */
+    background-image: 
+      radial-gradient(at 0% 0%, hsla(199, 89%, 48%, 0.03) 0px, transparent 50%),
+      radial-gradient(at 100% 0%, hsla(186, 70%, 50%, 0.03) 0px, transparent 50%);
+    background-attachment: fixed;
   }
 }
 
-/* Force dark theme */
-html {
-  @apply dark;
-}
+/* 
+   We remove the forced 'html { @apply dark; }' to allow flexibility.
+   But for the Admin Dashboard, we might strictly enforce dark or light.
+   For now, we leave it to the user preference or parent class.
+*/
 
 /* Custom styles for the dashboard */
 .dashboard-card {

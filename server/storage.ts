@@ -1,6 +1,6 @@
-import { 
+import {
   users, businesses, tours, transactions, retentionConfig, customers, bookings, seatHolds, ticketRedemptions,
-  type User, type InsertUser, type Business, type InsertBusiness, type Tour, type InsertTour, type Transaction, type InsertTransaction, 
+  type User, type InsertUser, type Business, type InsertBusiness, type Tour, type InsertTour, type Transaction, type InsertTransaction,
   type RetentionConfig, type InsertRetentionConfig, type Customer, type InsertCustomer,
   type Booking, type InsertBooking, type SeatHold, type InsertSeatHold, type TicketRedemption, type InsertTicketRedemption
 } from "@shared/schema";
@@ -14,7 +14,7 @@ export interface IStorage {
   getUserByUsername(username: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
   authenticateUser(username: string, password: string): Promise<User | null>;
-  
+
   // Tours
   getTour(id: number): Promise<Tour | undefined>;
   getTours(): Promise<Tour[]>;
@@ -22,18 +22,18 @@ export interface IStorage {
   getToursByBusiness(businessId: number): Promise<Tour[]>;
   createTour(tour: InsertTour): Promise<Tour>;
   updateTour(id: number, tour: Partial<Tour>): Promise<Tour | undefined>;
-  
+
   // Transactions
   getTransaction(id: number): Promise<Transaction | undefined>;
   getTransactions(): Promise<Transaction[]>;
   getTransactionsByBusiness(businessId: number): Promise<Transaction[]>;
   getRecentTransactions(limit?: number): Promise<Transaction[]>;
   createTransaction(transaction: InsertTransaction): Promise<Transaction>;
-  
+
   // Retention Config
   getRetentionConfig(): Promise<RetentionConfig | undefined>;
   updateRetentionConfig(config: InsertRetentionConfig): Promise<RetentionConfig>;
-  
+
   // Bookings
   getBooking(id: number): Promise<Booking | undefined>;
   getBookings(): Promise<Booking[]>;
@@ -43,17 +43,17 @@ export interface IStorage {
   updateBookingStatus(id: number, status: string): Promise<Booking | undefined>;
   createBooking(booking: InsertBooking & { qrCode: string; alphanumericCode: string; status: string; reservedUntil: Date }): Promise<Booking>;
   redeemTicket(bookingId: number, redeemedBy: number, method: string, notes?: string): Promise<TicketRedemption>;
-  
+
   // Ticket Redemptions
   getTicketRedemptions(): Promise<TicketRedemption[]>;
   getTicketRedemptionsByBusiness(businessId: number): Promise<TicketRedemption[]>;
   getRedemptionHistory(bookingId: number): Promise<TicketRedemption[]>;
   getValidationHistory(): Promise<(TicketRedemption & { booking: Booking; tour: Tour })[]>;
-  
+
   // Seat Holds
   createSeatHold(seatHold: InsertSeatHold & { expiresAt: Date }): Promise<SeatHold>;
   cleanupExpiredSeatHolds(): Promise<void>;
-  
+
   // Dashboard calculations
   getFinancialSummary(): Promise<{
     totalRevenue: number;
@@ -61,16 +61,20 @@ export interface IStorage {
     totalRetentions: number;
     totalSellerPayout: number;
   }>;
-  
+
   getFinancialSummaryByBusiness(businessId: number): Promise<{
     totalRevenue: number;
     totalAppCommission: number;
     totalRetentions: number;
     totalSellerPayout: number;
   }>;
-  
+
   // Initialize data
   initializeDatabase(): Promise<void>;
+
+  // Missing methods
+  getRedemptionHistory(bookingId: number): Promise<TicketRedemption[]>;
+  getValidationHistory(): Promise<(TicketRedemption & { booking: Booking; tour: Tour })[]>;
 }
 
 export class MemStorage implements IStorage {
@@ -79,6 +83,7 @@ export class MemStorage implements IStorage {
   private transactions: Map<number, Transaction>;
   private bookings: Map<number, Booking>;
   private seatHolds: Map<number, SeatHold>;
+  private ticketRedemptions: Map<number, TicketRedemption>;
   private retentionConfigData: RetentionConfig;
   private currentUserId: number;
   private currentTourId: number;
@@ -92,12 +97,13 @@ export class MemStorage implements IStorage {
     this.transactions = new Map();
     this.bookings = new Map();
     this.seatHolds = new Map();
+    this.ticketRedemptions = new Map();
     this.currentUserId = 1;
     this.currentTourId = 1;
     this.currentTransactionId = 1;
     this.currentBookingId = 1;
     this.currentSeatHoldId = 1;
-    
+
     // Initialize default retention config
     this.retentionConfigData = {
       id: 1,
@@ -106,7 +112,7 @@ export class MemStorage implements IStorage {
       bankCommissionRate: "3.00",
       otherRetentionsRate: "2.00",
     };
-    
+
     this.initializeData();
   }
 
@@ -125,7 +131,7 @@ export class MemStorage implements IStorage {
       permissions: null,
       lastLogin: null
     };
-    
+
     const businessUser: User = {
       id: 2,
       username: "dario",
@@ -139,7 +145,7 @@ export class MemStorage implements IStorage {
       permissions: null,
       lastLogin: null
     };
-    
+
     const managerUser: User = {
       id: 3,
       username: "manager",
@@ -153,7 +159,7 @@ export class MemStorage implements IStorage {
       permissions: ["tours", "reservations"],
       lastLogin: null
     };
-    
+
     this.users.set(1, masterAdmin);
     this.users.set(2, businessUser);
     this.users.set(3, managerUser);
@@ -330,12 +336,24 @@ export class MemStorage implements IStorage {
     return Array.from(this.users.values()).find(user => user.username === username);
   }
 
+  async authenticateUser(username: string, password: string): Promise<User | null> {
+    const user = Array.from(this.users.values()).find(
+      user => user.username === username && user.password === password && user.isActive
+    );
+    return user || null;
+  }
+
   async createUser(insertUser: InsertUser): Promise<User> {
     const id = this.currentUserId++;
-    const user: User = { 
-      ...insertUser, 
+    const user: User = {
+      ...insertUser,
       id,
-      role: insertUser.role || "operator"
+      role: insertUser.role || "business",
+      isActive: true,
+      createdAt: new Date(),
+      lastLogin: null,
+      businessId: insertUser.businessId || null,
+      permissions: insertUser.permissions || null
     };
     this.users.set(id, user);
     return user;
@@ -354,15 +372,27 @@ export class MemStorage implements IStorage {
     return Array.from(this.tours.values()).filter(tour => tour.userId === userId);
   }
 
+  async getToursByBusiness(businessId: number): Promise<Tour[]> {
+    return Array.from(this.tours.values()).filter(tour => tour.businessId === businessId);
+  }
+
   async createTour(insertTour: InsertTour): Promise<Tour> {
     const id = this.currentTourId++;
-    const tour: Tour = { 
-      ...insertTour, 
+    const tour: Tour = {
+      ...insertTour,
       id,
       status: insertTour.status || "active",
       imageUrl: insertTour.imageUrl || null,
       description: insertTour.description || null,
-      userId: insertTour.userId || null
+      userId: insertTour.userId || null,
+      capacity: 10,
+      duration: null,
+      includes: [],
+      requirements: null,
+      departureTime: null,
+      category: "tour",
+      gallery: [],
+      businessId: null
     };
     this.tours.set(id, tour);
     return tour;
@@ -371,7 +401,7 @@ export class MemStorage implements IStorage {
   async updateTour(id: number, tourUpdate: Partial<Tour>): Promise<Tour | undefined> {
     const tour = this.tours.get(id);
     if (!tour) return undefined;
-    
+
     const updatedTour = { ...tour, ...tourUpdate };
     this.tours.set(id, updatedTour);
     return updatedTour;
@@ -382,8 +412,12 @@ export class MemStorage implements IStorage {
     return this.transactions.get(id);
   }
 
+  async getTransactionsByBusiness(businessId: number): Promise<Transaction[]> {
+    return this.getTransactions();
+  }
+
   async getTransactions(): Promise<Transaction[]> {
-    return Array.from(this.transactions.values()).sort((a, b) => 
+    return Array.from(this.transactions.values()).sort((a, b) =>
       new Date(b.createdAt!).getTime() - new Date(a.createdAt!).getTime()
     );
   }
@@ -395,8 +429,8 @@ export class MemStorage implements IStorage {
 
   async createTransaction(insertTransaction: InsertTransaction): Promise<Transaction> {
     const id = this.currentTransactionId++;
-    const transaction: Transaction = { 
-      ...insertTransaction, 
+    const transaction: Transaction = {
+      ...insertTransaction,
       id,
       status: insertTransaction.status || "completed",
       tourId: insertTransaction.tourId || null,
@@ -424,14 +458,14 @@ export class MemStorage implements IStorage {
     totalSellerPayout: number;
   }> {
     const transactions = Array.from(this.transactions.values());
-    
+
     const totalRevenue = transactions.reduce((sum, t) => sum + parseFloat(t.amount), 0);
     const totalAppCommission = transactions.reduce((sum, t) => sum + parseFloat(t.appCommission), 0);
     const totalTaxAmount = transactions.reduce((sum, t) => sum + parseFloat(t.taxAmount), 0);
     const totalBankCommission = transactions.reduce((sum, t) => sum + parseFloat(t.bankCommission), 0);
     const totalOtherRetentions = transactions.reduce((sum, t) => sum + parseFloat(t.otherRetentions), 0);
     const totalSellerPayout = transactions.reduce((sum, t) => sum + parseFloat(t.sellerPayout), 0);
-    
+
     const totalRetentions = totalTaxAmount + totalBankCommission + totalOtherRetentions;
 
     return {
@@ -451,6 +485,10 @@ export class MemStorage implements IStorage {
     return Array.from(this.bookings.values());
   }
 
+  async getBookingsByBusiness(businessId: number): Promise<Booking[]> {
+    return this.getBookings();
+  }
+
   async getBookingByQR(qrCode: string): Promise<Booking | undefined> {
     const bookings = Array.from(this.bookings.values());
     return bookings.find(b => b.qrCode === qrCode);
@@ -460,39 +498,82 @@ export class MemStorage implements IStorage {
     const booking = this.bookings.get(id);
     if (booking) {
       const updatedBooking = { ...booking, status };
-      this.bookings.set(id, updatedBooking);
       return updatedBooking;
     }
     return undefined;
   }
 
-  async createBooking(bookingData: InsertBooking & { qrCode: string; status: string; reservedUntil: Date }): Promise<Booking> {
+  async getBookingByAlphanumericCode(code: string): Promise<Booking | undefined> {
+    const bookings = Array.from(this.bookings.values());
+    return bookings.find(b => b.alphanumericCode === code);
+  }
+
+  async redeemTicket(bookingId: number, redeemedBy: number, method: string, notes?: string): Promise<TicketRedemption> {
+    throw new Error("Method not implemented.");
+  }
+
+  async createBooking(bookingData: InsertBooking & { qrCode: string; alphanumericCode: string; status: string; reservedUntil: Date }): Promise<Booking> {
     const tour = this.tours.get(bookingData.tourId);
-    const booking: Booking = { 
+    const booking: Booking = {
       id: this.currentBookingId++,
       tourId: bookingData.tourId,
+      customerId: bookingData.customerId || null,
       bookingDate: bookingData.bookingDate,
-      adults: bookingData.adults,
-      children: bookingData.children,
+      adults: bookingData.adults || 1,
+      children: bookingData.children || 0,
       customerName: bookingData.customerName,
-      customerEmail: bookingData.customerEmail,
-      customerPhone: bookingData.customerPhone,
-      specialRequests: bookingData.specialRequests,
+      customerEmail: bookingData.customerEmail || null,
+      customerPhone: bookingData.customerPhone || null,
+      specialRequests: bookingData.specialRequests || null,
       totalAmount: bookingData.totalAmount,
       qrCode: bookingData.qrCode,
       status: bookingData.status,
       reservedUntil: bookingData.reservedUntil,
       createdAt: new Date(),
-      updatedAt: null,
-      paymentIntentId: null,
-      paymentStatus: null
+      transactionHash: bookingData.transactionHash || null,
+      redeemedAt: null,
+      redeemedBy: null,
+      healthConditions: bookingData.healthConditions || null,
+      paymentMethod: bookingData.paymentMethod || null,
+      alphanumericCode: bookingData.alphanumericCode || null
     };
     this.bookings.set(booking.id, booking);
     return booking;
   }
 
+  async getTicketRedemptions(): Promise<TicketRedemption[]> {
+    return Array.from(this.ticketRedemptions.values());
+  }
+
+  async getTicketRedemptionsByBusiness(businessId: number): Promise<TicketRedemption[]> {
+    const bookings = Array.from(this.bookings.values()).filter(b => {
+      const tour = this.tours.get(b.tourId);
+      return tour?.businessId === businessId;
+    });
+    const bookingIds = new Set(bookings.map(b => b.id));
+    return Array.from(this.ticketRedemptions.values()).filter((tr: TicketRedemption) => bookingIds.has(tr.bookingId));
+  }
+
+  async initializeDatabase(): Promise<void> {
+    // No-op for MemStorage
+  }
+
+  async getFinancialSummaryByBusiness(businessId: number): Promise<{
+    totalRevenue: number;
+    totalAppCommission: number;
+    totalRetentions: number;
+    totalSellerPayout: number;
+  }> {
+    return {
+      totalRevenue: 0,
+      totalAppCommission: 0,
+      totalRetentions: 0,
+      totalSellerPayout: 0
+    };
+  }
+
   async createSeatHold(seatHoldData: InsertSeatHold & { expiresAt: Date }): Promise<SeatHold> {
-    const seatHold: SeatHold = { 
+    const seatHold: SeatHold = {
       id: this.currentSeatHoldId++,
       tourId: seatHoldData.tourId,
       bookingDate: seatHoldData.bookingDate,
@@ -512,6 +593,14 @@ export class MemStorage implements IStorage {
         this.seatHolds.delete(id);
       }
     }
+  }
+
+  async getRedemptionHistory(bookingId: number): Promise<TicketRedemption[]> {
+    return [];
+  }
+
+  async getValidationHistory(): Promise<(TicketRedemption & { booking: Booking; tour: Tour })[]> {
+    return [];
   }
 }
 
@@ -584,7 +673,7 @@ export class DatabaseStorage implements IStorage {
       const [user] = await db.select().from(users).where(
         and(eq(users.username, username), eq(users.password, password), eq(users.isActive, true))
       );
-      
+
       if (user) {
         // Update last login
         await db.update(users).set({ lastLogin: new Date() }).where(eq(users.id, user.id));
@@ -695,11 +784,13 @@ export class DatabaseStorage implements IStorage {
 
   async getTransactionsByBusiness(businessId: number): Promise<Transaction[]> {
     try {
-      return await db.select()
+      const rows = await db.select()
         .from(transactions)
         .innerJoin(tours, eq(transactions.tourId, tours.id))
         .where(eq(tours.businessId, businessId))
         .orderBy(desc(transactions.createdAt));
+
+      return rows.map(r => r.transactions);
     } catch (error) {
       console.error("Error getting transactions by business:", error);
       return [];
@@ -758,11 +849,13 @@ export class DatabaseStorage implements IStorage {
 
   async getBookingsByBusiness(businessId: number): Promise<Booking[]> {
     try {
-      return await db.select()
+      const rows = await db.select()
         .from(bookings)
         .innerJoin(tours, eq(bookings.tourId, tours.id))
         .where(eq(tours.businessId, businessId))
         .orderBy(desc(bookings.createdAt));
+
+      return rows.map(r => r.bookings);
     } catch (error) {
       console.error("Error getting bookings by business:", error);
       return [];
@@ -807,7 +900,7 @@ export class DatabaseStorage implements IStorage {
   async redeemTicket(bookingId: number, redeemedBy: number, method: string, notes?: string): Promise<TicketRedemption> {
     try {
       // Primero actualizamos el booking como redimido
-      await db.update(bookings).set({ 
+      await db.update(bookings).set({
         redeemedAt: new Date(),
         redeemedBy: redeemedBy,
         status: 'completed'
@@ -839,12 +932,14 @@ export class DatabaseStorage implements IStorage {
 
   async getTicketRedemptionsByBusiness(businessId: number): Promise<TicketRedemption[]> {
     try {
-      return await db.select()
+      const rows = await db.select()
         .from(ticketRedemptions)
         .innerJoin(bookings, eq(ticketRedemptions.bookingId, bookings.id))
         .innerJoin(tours, eq(bookings.tourId, tours.id))
         .where(eq(tours.businessId, businessId))
         .orderBy(desc(ticketRedemptions.redeemedAt));
+
+      return rows.map(r => r.ticket_redemptions);
     } catch (error) {
       console.error("Error getting ticket redemptions by business:", error);
       return [];
@@ -977,9 +1072,9 @@ export class DatabaseStorage implements IStorage {
         totalRetentions: sql<number>`COALESCE(SUM(transactions.tax_amount + transactions.bank_commission + transactions.other_retentions), 0)`,
         totalSellerPayout: sql<number>`COALESCE(SUM(transactions.seller_payout), 0)`
       })
-      .from(transactions)
-      .innerJoin(tours, eq(transactions.tourId, tours.id))
-      .where(eq(tours.businessId, businessId));
+        .from(transactions)
+        .innerJoin(tours, eq(transactions.tourId, tours.id))
+        .where(eq(tours.businessId, businessId));
 
       return result[0] || { totalRevenue: 0, totalAppCommission: 0, totalRetentions: 0, totalSellerPayout: 0 };
     } catch (error) {

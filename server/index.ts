@@ -1,7 +1,7 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
-import dotenv from "dotenv";
+import * as dotenv from "dotenv";
 dotenv.config();
 
 const app = express();
@@ -27,7 +27,7 @@ app.use((req, res, next) => {
       if (capturedJsonResponse) {
         try {
           logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
-        } catch {}
+        } catch { }
       }
 
       if (logLine.length > 80) {
@@ -39,6 +39,17 @@ app.use((req, res, next) => {
   });
 
   next();
+});
+
+// Basic error handling middleware
+app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+  console.error(err.stack);
+  res.status(500).json({ error: 'Something went wrong!' });
+});
+
+// Health check endpoint
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'ok' });
 });
 
 (async () => {
@@ -57,9 +68,14 @@ app.use((req, res, next) => {
     serveStatic(app);
   }
 
-const PORT = Number(process.env.PORT) || 5000;
-    const HOST = "0.0.0.0";
-    server.listen(PORT, HOST, () => {
+
+
+  const PORT = Number(process.env.PORT) || 5000;
+  const HOST = "0.0.0.0";
+  server.listen(PORT, HOST, () => {
     log(`serving on port ${PORT}`);
-    });
+  });
 })();
+
+// Export for serverless
+export default app;

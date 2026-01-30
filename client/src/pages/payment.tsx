@@ -8,9 +8,9 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { 
-  ArrowLeft, 
-  CreditCard, 
+import {
+  ArrowLeft,
+  CreditCard,
   Wallet,
   Shield,
   CheckCircle,
@@ -23,13 +23,13 @@ export default function Payment() {
   const [, setLocation] = useLocation();
   const [paymentMethod, setPaymentMethod] = useState("card");
   const [isProcessing, setIsProcessing] = useState(false);
-  
+
   // Card form data
   const [cardNumber, setCardNumber] = useState("");
   const [expiryDate, setExpiryDate] = useState("");
   const [cvv, setCvv] = useState("");
   const [cardName, setCardName] = useState("");
-  
+
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -40,7 +40,7 @@ export default function Payment() {
     mutationFn: async (paymentData: any) => {
       // Simulate payment processing delay
       await new Promise(resolve => setTimeout(resolve, 2000));
-      
+
       // Create the actual booking after successful payment
       const response = await apiRequest("POST", "/api/bookings", {
         ...bookingData,
@@ -99,7 +99,7 @@ export default function Payment() {
     }
 
     setIsProcessing(true);
-    
+
     try {
       await processPaymentMutation.mutateAsync({
         method: paymentMethod,
@@ -136,11 +136,11 @@ export default function Payment() {
 
   if (!bookingData) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-cyan-50 flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center p-6">
-          <h2 className="text-xl font-bold text-gray-900 mb-2">Error de Datos</h2>
-          <p className="text-gray-600 mb-4">No se encontraron los datos de reserva</p>
-          <Button onClick={() => setLocation('/customer')} className="bg-blue-600 hover:bg-blue-700">
+          <h2 className="text-xl font-bold text-foreground mb-2">Error de Datos</h2>
+          <p className="text-muted-foreground mb-4">No se encontraron los datos de reserva</p>
+          <Button onClick={() => setLocation('/customer')} className="bg-primary hover:bg-primary/90">
             Volver al Inicio
           </Button>
         </div>
@@ -149,9 +149,9 @@ export default function Payment() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-cyan-50">
+    <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="bg-white/80 backdrop-blur-lg shadow-sm border-b border-gray-200/50 sticky top-0 z-50">
+      <header className="bg-white/80 backdrop-blur-lg shadow-sm border-b border-border sticky top-0 z-50">
         <div className="px-4 py-3">
           <div className="flex items-center space-x-3">
             <Button
@@ -163,8 +163,8 @@ export default function Payment() {
               <ArrowLeft className="w-5 h-5" />
             </Button>
             <div>
-              <h1 className="text-lg font-bold text-gray-900">Finalizar Pago</h1>
-              <p className="text-xs text-gray-600">Paso final - Proceso seguro</p>
+              <h1 className="text-lg font-bold text-foreground">Finalizar Pago</h1>
+              <p className="text-xs text-muted-foreground">Paso final - Proceso seguro</p>
             </div>
           </div>
         </div>
@@ -185,30 +185,30 @@ export default function Payment() {
         </Card>
 
         {/* Order Summary */}
-        <Card className="bg-white/70 backdrop-blur-sm border-0 shadow-lg">
+        <Card className="bg-card/80 backdrop-blur-sm border-0 shadow-lg">
           <CardHeader>
-            <CardTitle className="text-lg text-black">Resumen de tu Reserva</CardTitle>
+            <CardTitle className="text-lg text-foreground">Resumen de tu Reserva</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             <div className="flex justify-between">
-              <span className="text-gray-600">Tour:</span>
-              <span className="font-medium text-black">{bookingData.tourName}</span>
+              <span className="text-muted-foreground">Tour:</span>
+              <span className="font-medium text-foreground">{bookingData.tourName}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-gray-600">Huéspedes:</span>
-              <span className="font-medium text-black">
-                {bookingData.adults} adulto{bookingData.adults !== 1 ? 's' : ''} 
+              <span className="text-muted-foreground">Huéspedes:</span>
+              <span className="font-medium text-foreground">
+                {bookingData.adults} adulto{bookingData.adults !== 1 ? 's' : ''}
                 {bookingData.children > 0 && ` + ${bookingData.children} niño${bookingData.children !== 1 ? 's' : ''}`}
               </span>
             </div>
             <div className="flex justify-between">
-              <span className="text-gray-600">Fecha:</span>
-              <span className="font-medium text-black">{new Date(bookingData.bookingDate).toLocaleDateString('es-MX')}</span>
+              <span className="text-muted-foreground">Fecha:</span>
+              <span className="font-medium text-foreground">{new Date(bookingData.bookingDate).toLocaleDateString('es-MX')}</span>
             </div>
-            <div className="border-t pt-3">
+            <div className="border-t pt-3 border-border">
               <div className="flex justify-between items-center">
-                <span className="text-lg font-bold text-black">Total a Pagar:</span>
-                <span className="text-2xl font-bold text-blue-600">
+                <span className="text-lg font-bold text-foreground">Total a Pagar:</span>
+                <span className="text-2xl font-bold text-primary">
                   ${parseFloat(bookingData.totalAmount).toLocaleString()} MXN
                 </span>
               </div>
@@ -233,7 +233,7 @@ export default function Payment() {
                   </div>
                 </Label>
               </div>
-              
+
               <div className="flex items-center space-x-2 p-3 border rounded-xl hover:bg-gray-50">
                 <RadioGroupItem value="crypto" id="crypto" />
                 <Label htmlFor="crypto" className="flex items-center cursor-pointer flex-1">
@@ -344,10 +344,10 @@ export default function Payment() {
         </Card>
 
         {/* Payment Button */}
-        <Button 
+        <Button
           onClick={handlePayment}
           disabled={isProcessing || processPaymentMutation.isPending}
-          className="w-full bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white h-14 text-lg font-medium rounded-xl shadow-lg"
+          className="btn-ocean-primary w-full h-14 text-lg font-medium rounded-xl shadow-lg"
         >
           {isProcessing || processPaymentMutation.isPending ? (
             <>

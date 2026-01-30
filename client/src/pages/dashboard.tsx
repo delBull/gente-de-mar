@@ -14,7 +14,7 @@ import { Button } from "@/components/ui/button";
 export default function Dashboard() {
   const [isMobileLayout, setIsMobileLayout] = useState(false);
   const { mainContainerClasses, headerClasses, mainClasses } = useResponsiveLayout();
-  
+
   const { data: financialSummary, isLoading: isLoadingSummary } = useQuery({
     queryKey: ["/api/financial-summary"],
   });
@@ -32,25 +32,25 @@ export default function Dashboard() {
   });
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
+    <div className="flex min-h-screen bg-background">
       {/* Unified Sidebar */}
       <MobileSidebar />
-      
+
       {/* Main Content with Mobile/Desktop Layout Toggle */}
       <div className={mainContainerClasses}>
         {/* Header */}
-        <header className="bg-white border-b border-gray-200 p-4 md:p-6">
+        <header className="bg-card/80 backdrop-blur-md border-b border-border p-4 md:p-6 sticky top-0 z-10">
           <div className={headerClasses}>
             <div className="pl-20 lg:pl-0 flex items-center space-x-4">
               <StaticLogo size="sm" showText={false} />
               <div>
-                <h2 className="text-xl md:text-2xl font-bold text-gray-900">¡Hola Darío!</h2>
-                <p className="text-sm md:text-base text-gray-600">Dashboard financiero</p>
+                <h2 className="text-xl md:text-2xl font-bold text-foreground">¡Hola Darío!</h2>
+                <p className="text-sm md:text-base text-muted-foreground">Dashboard financiero</p>
               </div>
             </div>
-            
+
             <div className="flex items-center space-x-2">
-              <Button 
+              <Button
                 variant={isMobileLayout ? "default" : "ghost"}
                 size="sm"
                 onClick={() => setIsMobileLayout(!isMobileLayout)}
@@ -86,59 +86,59 @@ export default function Dashboard() {
 
             {/* Mobile Layout - Single Column Stack */}
             <div className="space-y-6">
-              <FinancialOverview 
-                data={financialSummary as any} 
-                isLoading={isLoadingSummary} 
+              <FinancialOverview
+                data={financialSummary as any}
+                isLoading={isLoadingSummary}
               />
-              
-              <PaymentFlowChart 
-                data={financialSummary as any} 
-                isLoading={isLoadingSummary} 
+
+              <PaymentFlowChart
+                data={financialSummary as any}
+                isLoading={isLoadingSummary}
               />
-              
-              <RecentTransactions 
-                transactions={transactions as any} 
-                isLoading={isLoadingTransactions} 
+
+              <RecentTransactions
+                transactions={transactions as any}
+                isLoading={isLoadingTransactions}
               />
-              
-              <ActiveTours 
-                tours={tours as any} 
-                isLoading={isLoadingTours} 
+
+              <ActiveTours
+                tours={tours as any}
+                isLoading={isLoadingTours}
               />
-              
-              <RetentionConfig 
-                config={retentionConfig as any} 
-                isLoading={isLoadingConfig} 
+
+              <RetentionConfig
+                config={retentionConfig as any}
+                isLoading={isLoadingConfig}
               />
             </div>
           </main>
         ) : (
           /* Desktop Layout - 2 Column Grid */
           <main className={mainClasses}>
-            <FinancialOverview 
-              data={financialSummary as any} 
-              isLoading={isLoadingSummary} 
+            <FinancialOverview
+              data={financialSummary as any}
+              isLoading={isLoadingSummary}
             />
-            
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
-              <PaymentFlowChart 
-                data={financialSummary as any} 
-                isLoading={isLoadingSummary} 
+              <PaymentFlowChart
+                data={financialSummary as any}
+                isLoading={isLoadingSummary}
               />
-              <RecentTransactions 
-                transactions={transactions as any} 
-                isLoading={isLoadingTransactions} 
+              <RecentTransactions
+                transactions={transactions as any}
+                isLoading={isLoadingTransactions}
               />
             </div>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
-              <ActiveTours 
-                tours={tours as any} 
-                isLoading={isLoadingTours} 
+              <ActiveTours
+                tours={tours as any}
+                isLoading={isLoadingTours}
               />
-              <RetentionConfig 
-                config={retentionConfig as any} 
-                isLoading={isLoadingConfig} 
+              <RetentionConfig
+                config={retentionConfig as any}
+                isLoading={isLoadingConfig}
               />
             </div>
           </main>

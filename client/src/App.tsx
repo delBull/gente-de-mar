@@ -45,14 +45,14 @@ function Router() {
       <Route path="/customers" component={isAuthenticated ? Customers : Login} />
       <Route path="/redeem" component={isAuthenticated ? RedeemTicket : Login} />
       <Route path="/redeem-ticket" component={isAuthenticated ? RedeemTicket : Login} />
-      
+
       {/* Customer Booking Routes - Public */}
       <Route path="/customer" component={CustomerHome} />
       <Route path="/book/:id" component={Booking} />
       <Route path="/payment/:bookingData" component={Payment} />
       <Route path="/booking-success/:bookingId" component={BookingSuccess} />
       <Route path="/ticket/:id" component={Ticket} />
-      
+
       <Route component={NotFound} />
     </Switch>
   );
@@ -63,7 +63,7 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <SidebarProvider>
-          <div className="dark">
+          <div className="min-h-screen bg-background font-sans antialiased">
             <Router />
             <Toaster />
           </div>

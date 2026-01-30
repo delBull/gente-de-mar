@@ -1,15 +1,75 @@
 import { useState, useEffect } from "react";
 import { apiRequest } from "@/lib/queryClient";
 
+type UserRole = 'business' | 'manager' | 'master_admin';
+
 export interface User {
   id: number;
   username: string;
   email: string;
+  password: string;
   fullName: string;
-  role: 'master_admin' | 'business' | 'manager';
-  businessId?: number;
-  permissions?: string[];
+  role: UserRole;
   isActive: boolean;
+  createdAt: Date | null;
+  businessId: number | null;
+  permissions: string[] | null;
+  lastLogin: Date | null;
+  name?: string;
+  avatar?: string;
+}
+export interface Tour {
+  id: number;
+  name: string;
+  location: string;
+  price: string;
+  status: string;
+  imageUrl: string | null;
+  description: string | null;
+  userId: number | null;
+  businessId: number | null;
+  capacity: number;
+  duration: string | null;
+  includes: string[] | null;
+  requirements: string | null;
+  departureTime: string | null;
+  category: string;
+  gallery: string[] | null;
+}
+
+export interface Transaction {
+  id: number;
+  createdAt: Date | null;
+  status: string;
+  tourId: number | null;
+  tourName: string;
+  amount: string;
+  appCommission: string;
+  taxAmount: string;
+  bankCommission: string;
+  otherRetentions: string;
+  sellerPayout: string;
+}
+
+export interface Booking {
+  id: number;
+  createdAt: Date | null;
+  status: string;
+  tourId: number;
+  bookingDate: Date;
+  customerId: number | null;
+  customerName: string;
+  customerEmail: string | null;
+  customerPhone: string | null;
+  adults: number;
+  children: number;
+  totalAmount: string;
+  specialRequests: string | null;
+  qrCode: string;
+  alphanumericCode: string;
+  redeemedAt: Date | null;
+  redeemedBy: number | null;
+  reservedUntil: Date | null;
 }
 
 export function useAuth() {
@@ -92,49 +152,64 @@ export function useAuth() {
     }
   };
 
-  const hasPermission = (permission: string) => {
+const isMasterAdmin = (user: User) => user.role === 'master_admin';
+const isBusiness = (user: User) => user.role === 'business';
+const isManager = (user: User) => user.role === 'manager';
+
+const canManageBookings = (user: User) => {
+    return isMasterAdmin(user) || isBusiness(user);
+};
+
+const isAdmin = (user: User) => {
+    return isMasterAdmin(user);
+};
+
+const hasPermission = (permission: string) => {
     if (!user) return false;
     if (user.role === 'master_admin') return true;
     return user.permissions?.includes(permission) || false;
   };
 
-  const canAccessFinancials = () => {
-    return user?.role === 'master_admin' || user?.role === 'business';
-  };
+const canAccessFinancials = (): boolean => {
+  if (!user) return false;
+  return user.role === 'master_admin' || user.role === 'business';
+};
 
-  const canManageUsers = () => {
-    return user?.role === 'master_admin' || user?.role === 'business';
-  };
+const canManageUsers = (): boolean => {
+  if (!user) return false;
+  return user.role === 'master_admin' || user.role === 'business';
+};
 
-  const canAccessSection = (section: string) => {
-    if (!isAuthenticated || !user) return false;
-    
-    // Master Admin puede acceder a todo
-    if (user.role === 'master_admin') return true;
-    
-    switch (section) {
-      case 'dashboard':
-        return user.role === 'business' || user.role === 'master_admin';
-      case 'tours':
-        return true; // Todos los usuarios autenticados pueden ver tours
-      case 'reservations':
-        return true; // Todos los usuarios autenticados pueden ver reservas
-      case 'payments':
-        // Solo Master Admin y Business pueden ver pagos (manager NO)
-        return user.role === 'master_admin' || user.role === 'business';
-      case 'reports':
-        return true; // Todos pueden ver reportes
-      case 'customers':
-        return true; // Todos pueden ver clientes
-      case 'settings':
-        // Solo Master Admin puede cambiar configuraciones
-        return user.role === 'master_admin';
-      case 'redeem':
-        return true; // Todos los usuarios autenticados pueden canjear tickets
-      default:
-        return false;
-    }
-  };
+const canAccessSection = (section: string): boolean => {
+  if (!isAuthenticated || !user) return false;
+  
+  const role: UserRole = user.role;
+  
+  // Master Admin puede acceder a todo
+  if (role === 'master_admin') return true;
+  
+  switch (section) {
+    case 'dashboard':
+      return role === 'business';
+    case 'tours':
+      return true; // Todos los usuarios autenticados pueden ver tours
+    case 'reservations':
+      return true; // Todos los usuarios autenticados pueden ver reservas
+    case 'payments':
+      // Solo Master Admin y Business pueden ver pagos (manager NO)
+      return role === 'business';
+    case 'reports':
+      return true; // Todos pueden ver reportes
+    case 'customers':
+      return true; // Todos pueden ver clientes
+    case 'settings':
+      return false; // Solo Master Admin puede cambiar configuraciones (ya manejado arriba)
+    case 'redeem':
+      return true; // Todos los usuarios autenticados pueden canjear tickets
+    default:
+      return false;
+  }
+};
 
   return {
     user,

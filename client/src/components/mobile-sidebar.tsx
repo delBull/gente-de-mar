@@ -48,7 +48,7 @@ export default function MobileSidebar() {
   const [isOpen, setIsOpen] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const { isCollapsed, setIsCollapsed } = useSidebarContext();
-  
+
   const { user, isAuthenticated, logout, canAccessSection } = useAuth();
   const { toast } = useToast();
   const isMobile = useIsMobile();
@@ -97,23 +97,22 @@ export default function MobileSidebar() {
 
   // Desktop Sidebar Component
   const DesktopSidebar = () => (
-    <div className={`hidden lg:flex fixed left-0 top-0 h-full bg-gray-50 border-r border-gray-200 z-40 transition-all duration-300 ${
-      isCollapsed ? 'w-16' : 'w-64'
-    }`}>
+    <div className={`hidden lg:flex fixed left-0 top-0 h-full bg-sidebar-background border-r border-sidebar-border z-40 transition-all duration-300 ${isCollapsed ? 'w-16' : 'w-64'
+      }`}>
       <div className="flex flex-col w-full">
         {/* Header con botón de colapso */}
-        <div className="flex items-center justify-between p-4 border-b border-gray-200">
+        <div className="flex items-center justify-between p-4 border-b border-sidebar-border">
           {!isCollapsed && (
             <div className="flex items-center space-x-2">
               <StaticLogo size="sm" showText={false} />
-              <h1 className="text-lg font-semibold text-gray-900">Gente de Mar</h1>
+              <h1 className="text-lg font-semibold text-sidebar-foreground">Gente de Mar</h1>
             </div>
           )}
           <Button
             variant="ghost"
             size="sm"
             onClick={() => setIsCollapsed(!isCollapsed)}
-            className="p-1"
+            className="p-1 text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
           >
             {isCollapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
           </Button>
@@ -133,18 +132,17 @@ export default function MobileSidebar() {
             <nav className="flex-1 p-4 space-y-2">
               {navigation.map((item) => {
                 if (!canAccessSection(item.section)) return null;
-                
+
                 const isActive = location === item.href;
                 const Icon = item.icon;
-                
+
                 return (
                   <Link key={item.name} href={item.href}>
                     <div
-                      className={`flex items-center p-3 rounded-lg transition-colors cursor-pointer ${
-                        isActive 
-                          ? 'bg-blue-100 text-blue-700' 
-                          : 'text-gray-700 hover:bg-gray-100'
-                      } ${isCollapsed ? 'justify-center' : ''}`}
+                      className={`flex items-center p-3 rounded-lg transition-colors cursor-pointer ${isActive
+                        ? 'bg-sidebar-accent text-primary font-medium'
+                        : 'text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
+                        } ${isCollapsed ? 'justify-center' : ''}`}
                       onClick={() => {
                         setTimeout(() => {
                           window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -165,22 +163,22 @@ export default function MobileSidebar() {
             <div className="border-t border-gray-200 p-4 space-y-3">
               {/* Información del usuario */}
               {!isCollapsed && (
-                <div className="flex items-center space-x-3 p-3 bg-blue-50 rounded-lg">
+                <div className="flex items-center space-x-3 p-3 bg-sidebar-accent rounded-lg">
                   {getRoleIcon(user?.role || '')}
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-900 truncate">
+                    <p className="text-sm font-medium text-sidebar-foreground truncate">
                       {user?.fullName}
                     </p>
-                    <p className="text-xs text-blue-600">
+                    <p className="text-xs text-primary">
                       {getRoleLabel(user?.role || '')}
                     </p>
                   </div>
                 </div>
               )}
-              <Button 
+              <Button
                 onClick={handleLogout}
                 variant="ghost"
-                className={`${isCollapsed ? 'w-10 h-10 p-0' : 'w-full'} bg-transparent text-black hover:bg-gray-100`}
+                className={`${isCollapsed ? 'w-10 h-10 p-0' : 'w-full'} bg-transparent text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground`}
               >
                 <LogOut className="w-4 h-4 mr-0" />
                 {!isCollapsed && <span className="ml-2">Cerrar Sesión</span>}
@@ -194,14 +192,14 @@ export default function MobileSidebar() {
 
   // Mobile Sidebar Content
   const SidebarContent = () => (
-    <div className="flex flex-col h-full bg-gray-50">
+    <div className="flex flex-col h-full bg-sidebar-background">
       {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b border-gray-200">
+      <div className="flex items-center justify-between p-4 border-b border-sidebar-border">
         <div className="flex items-center space-x-2">
-          <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-            <Globe className="w-5 h-5 text-white" />
+          <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
+            <Globe className="w-5 h-5 text-primary-foreground" />
           </div>
-          <h1 className="text-lg font-semibold text-gray-900">Gente de Mar</h1>
+          <h1 className="text-lg font-semibold text-sidebar-foreground">Gente de Mar</h1>
         </div>
         <div className="flex items-center space-x-2">
           {isAuthenticated && (user?.role === 'business' || user?.role === 'manager') && (
@@ -226,21 +224,20 @@ export default function MobileSidebar() {
             <AnimatedLogo />
           </div>
         )}
-        
+
         {isAuthenticated && navigation.map((item) => {
           if (!canAccessSection(item.section)) return null;
-          
+
           const isActive = location === item.href;
           const Icon = item.icon;
-          
+
           return (
             <Link key={item.name} href={item.href}>
               <div
-                className={`flex items-center space-x-3 p-3 rounded-lg transition-colors cursor-pointer ${
-                  isActive 
-                    ? 'bg-blue-100 text-blue-700' 
-                    : 'text-gray-700 hover:bg-gray-100'
-                }`}
+                className={`flex items-center space-x-3 p-3 rounded-lg transition-colors cursor-pointer ${isActive
+                    ? 'bg-sidebar-accent text-primary font-medium'
+                    : 'text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
+                  }`}
                 onClick={() => {
                   setIsOpen(false);
                   setTimeout(() => {
@@ -258,11 +255,10 @@ export default function MobileSidebar() {
         {isAuthenticated && canAccessSection('customers') && (
           <Link href="/customers">
             <div
-              className={`flex items-center space-x-3 p-3 rounded-lg transition-colors cursor-pointer ${
-                location === '/customers' 
-                  ? 'bg-blue-100 text-blue-700' 
-                  : 'text-gray-700 hover:bg-gray-100'
-              }`}
+              className={`flex items-center space-x-3 p-3 rounded-lg transition-colors cursor-pointer ${location === '/customers'
+                  ? 'bg-sidebar-accent text-primary font-medium'
+                  : 'text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
+                }`}
               onClick={() => {
                 setIsOpen(false);
                 setTimeout(() => {
@@ -277,8 +273,8 @@ export default function MobileSidebar() {
         )}
 
         {!isAuthenticated ? (
-          <button 
-            onClick={() => {setShowAuthModal(true); setIsOpen(false);}}
+          <button
+            onClick={() => { setShowAuthModal(true); setIsOpen(false); }}
             className="btn-ocean-primary w-full"
           >
             <LogIn className="w-4 h-4 mr-2" />
@@ -286,18 +282,18 @@ export default function MobileSidebar() {
           </button>
         ) : (
           <div className="space-y-3">
-            <div className="flex items-center space-x-3 p-3 bg-blue-50 rounded-lg">
+            <div className="flex items-center space-x-3 p-3 bg-sidebar-accent rounded-lg">
               {getRoleIcon(user?.role || '')}
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-gray-900 truncate">
+                <p className="text-sm font-medium text-sidebar-foreground truncate">
                   {user?.fullName}
                 </p>
-                <p className="text-xs text-blue-600">
+                <p className="text-xs text-primary">
                   {getRoleLabel(user?.role || '')}
                 </p>
               </div>
             </div>
-            <Button 
+            <Button
               onClick={handleLogout}
               variant="outline"
               className="w-full border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300"
@@ -315,12 +311,12 @@ export default function MobileSidebar() {
     <>
       {/* Desktop Sidebar */}
       <DesktopSidebar />
-      
+
       {/* Mobile & Tablet Menu Button - Innovative Vertical Design */}
       <div className="lg:hidden fixed left-0 top-0 h-full z-50 flex items-center">
         <div className="relative h-full">
           {/* Gradient Background Bar */}
-          <div 
+          <div
             className="w-12 h-full bg-gradient-to-b from-cyan-500 via-blue-600 to-blue-700 shadow-lg flex items-center justify-center cursor-pointer transition-all duration-300 hover:w-14"
             onClick={() => setIsOpen(true)}
             style={{
@@ -339,7 +335,7 @@ export default function MobileSidebar() {
                 />
               </svg>
             </div>
-            
+
             {/* Menu Icon - Centered Burger Lines */}
             <div className="relative z-10 flex flex-col space-y-1.5">
               <div className="w-6 h-0.5 bg-white rounded"></div>
@@ -361,9 +357,9 @@ export default function MobileSidebar() {
       </Sheet>
 
       {/* Auth Modal */}
-      <AuthModal 
-        isOpen={showAuthModal} 
-        onClose={() => setShowAuthModal(false)} 
+      <AuthModal
+        isOpen={showAuthModal}
+        onClose={() => setShowAuthModal(false)}
       />
     </>
   );

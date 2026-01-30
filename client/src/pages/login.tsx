@@ -14,7 +14,7 @@ export default function Login() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
-  
+
   const { login } = useAuth();
   const [, setLocation] = useLocation();
 
@@ -26,7 +26,7 @@ export default function Login() {
       setError("");
       setUsername("");
       setPassword("");
-      
+
       // Redirigir al dashboard después del login exitoso
       setTimeout(() => {
         setLocation("/dashboard");
@@ -47,18 +47,24 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-cyan-50 p-4">
-      <Card className="w-full max-w-md">
+    <div className="min-h-screen flex items-center justify-center bg-background p-4 relative overflow-hidden">
+      {/* Decorative blobs */}
+      <div className="absolute top-0 left-0 w-full h-full overflow-hidden z-0 pointer-events-none">
+        <div className="absolute top-10 left-10 w-64 h-64 bg-primary/20 rounded-full blur-3xl opacity-50 animate-pulse" />
+        <div className="absolute bottom-10 right-10 w-96 h-96 bg-ring/20 rounded-full blur-3xl opacity-50 animate-pulse" style={{ animationDelay: "1s" }} />
+      </div>
+
+      <Card className="w-full max-w-md z-10 bg-card/80 backdrop-blur-lg border-primary/20 shadow-2xl">
         <CardHeader className="text-center space-y-4">
           <div className="flex justify-center">
             <StaticLogo size="lg" showText={false} />
           </div>
-          <CardTitle className="text-2xl font-bold text-gray-100">
+          <CardTitle className="text-2xl font-bold text-foreground">
             Gente de Mar
           </CardTitle>
-          <p className="text-gray-100">Panel de Administración</p>
+          <p className="text-muted-foreground">Panel de Administración</p>
         </CardHeader>
-        
+
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             {error && (
@@ -66,7 +72,7 @@ export default function Login() {
                 <AlertDescription>{error}</AlertDescription>
               </Alert>
             )}
-            
+
             <div className="space-y-2">
               <Label htmlFor="username">Usuario</Label>
               <div className="relative">
@@ -82,7 +88,7 @@ export default function Login() {
                 />
               </div>
             </div>
-            
+
             <div className="space-y-2">
               <Label htmlFor="password">Contraseña</Label>
               <div className="relative">
@@ -98,7 +104,7 @@ export default function Login() {
                 />
               </div>
             </div>
-            
+
             <button
               type="submit"
               className="btn-ocean-primary w-full"
@@ -114,8 +120,8 @@ export default function Login() {
               )}
             </button>
           </form>
-          
-          <div className="mt-6 text-center text-sm text-gray-500 space-y-1">
+
+          <div className="mt-6 text-center text-sm text-muted-foreground space-y-1">
             <p>Credenciales de prueba:</p>
             <div className="text-xs space-y-1">
               <p><strong>Master:</strong> Dario / gentedemar</p>

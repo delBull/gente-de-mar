@@ -11,12 +11,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { Calendar } from "@/components/ui/calendar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
-import { 
-  ArrowLeft, 
-  Calendar as CalendarIcon, 
-  Clock, 
-  Users, 
-  MapPin, 
+import {
+  ArrowLeft,
+  Calendar as CalendarIcon,
+  Clock,
+  Users,
+  MapPin,
   Star,
   Minus,
   Plus,
@@ -51,7 +51,7 @@ export default function Booking() {
   const [, params] = useRoute("/book/:id");
   const [, setLocation] = useLocation();
   const [step, setStep] = useState(1); // 1: Info, 2: Fecha/Huéspedes, 3: Datos, 4: Pago
-  
+
   // Formulario
   const [selectedDate, setSelectedDate] = useState<Date | undefined>();
   const [adults, setAdults] = useState(1);
@@ -61,7 +61,7 @@ export default function Booking() {
   const [customerPhone, setCustomerPhone] = useState("");
   const [specialRequests, setSpecialRequests] = useState("");
   const [healthIssues, setHealthIssues] = useState("");
-  
+
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -152,35 +152,34 @@ export default function Booking() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-cyan-50">
-        <div className="p-4 space-y-4">
-          <Skeleton className="h-16 w-full rounded-xl" />
-          <Skeleton className="h-64 w-full rounded-2xl" />
-          <Skeleton className="h-32 w-full rounded-xl" />
-        </div>
+      <div className="min-h-screen bg-background p-4 space-y-4">
+        <Skeleton className="h-16 w-full rounded-xl" />
+        <Skeleton className="h-64 w-full rounded-2xl" />
+        <Skeleton className="h-32 w-full rounded-xl" />
       </div>
     );
   }
 
   if (!tour) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-cyan-50 flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center p-6">
-          <AlertCircle className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-          <h2 className="text-xl font-bold text-gray-900 mb-2">Tour no encontrado</h2>
-          <p className="text-gray-600 mb-4">El tour que buscas no está disponible</p>
-          <Button onClick={() => setLocation('/customer')} className="bg-blue-600 hover:bg-blue-700">
+          <AlertCircle className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
+          <h2 className="text-xl font-bold text-foreground mb-2">Tour no encontrado</h2>
+          <p className="text-muted-foreground mb-4">El tour que buscas no está disponible</p>
+          <Button onClick={() => setLocation('/customer')} className="bg-primary hover:bg-primary/90">
             Volver a tours
           </Button>
         </div>
       </div>
     );
+
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-cyan-50">
+    <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="bg-white/80 backdrop-blur-lg shadow-sm border-b border-gray-200/50 sticky top-0 z-50">
+      <header className="bg-white/80 backdrop-blur-lg shadow-sm border-b border-border sticky top-0 z-50">
         <div className="px-4 py-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
@@ -193,8 +192,8 @@ export default function Booking() {
                 <ArrowLeft className="w-5 h-5" />
               </Button>
               <div>
-                <h1 className="text-lg font-bold text-gray-900">Reservar Tour</h1>
-                <p className="text-xs text-gray-600">Paso {step} de 4</p>
+                <h1 className="text-lg font-bold text-foreground">Reservar Tour</h1>
+                <p className="text-xs text-muted-foreground">Paso {step} de 4</p>
               </div>
             </div>
             <div className="flex items-center space-x-2">
@@ -214,9 +213,8 @@ export default function Booking() {
         <div className="flex items-center space-x-2">
           {[1, 2, 3, 4].map((stepNumber) => (
             <div key={stepNumber} className="flex items-center flex-1">
-              <div className={`w-full h-2 rounded-full ${
-                stepNumber <= step ? 'bg-blue-600' : 'bg-gray-200'
-              }`} />
+              <div className={`w-full h-2 rounded-full ${stepNumber <= step ? 'bg-primary' : 'bg-muted'
+                }`} />
               {stepNumber < 4 && <div className="w-2" />}
             </div>
           ))}
@@ -246,7 +244,7 @@ export default function Booking() {
               </div>
             </div>
           </div>
-          
+
           <CardContent className="p-4">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center space-x-4 text-sm text-gray-600">
@@ -271,7 +269,7 @@ export default function Booking() {
 
             <div className="flex items-center mb-3">
               <div className="flex text-yellow-400 mr-2">
-                {[1,2,3,4,5].map(i => (
+                {[1, 2, 3, 4, 5].map(i => (
                   <Star key={i} className="w-4 h-4 fill-current" />
                 ))}
               </div>
@@ -326,7 +324,7 @@ export default function Booking() {
               </Card>
             )}
 
-            <Button 
+            <Button
               onClick={() => setStep(2)}
               className="w-full bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white h-12 text-lg font-medium rounded-xl shadow-lg"
             >
@@ -471,14 +469,14 @@ export default function Booking() {
             </Card>
 
             <div className="flex space-x-3">
-              <Button 
-                variant="ghost" 
+              <Button
+                variant="ghost"
                 onClick={() => setStep(1)}
                 className="flex-1 h-12 rounded-xl border border-gray-200 bg-white/50 backdrop-blur-sm hover:bg-white hover:shadow-sm transition-all"
               >
                 Atrás
               </Button>
-              <Button 
+              <Button
                 onClick={() => setStep(3)}
                 disabled={!selectedDate || totalGuests === 0}
                 className="flex-1 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white h-12 rounded-xl"
@@ -599,14 +597,14 @@ export default function Booking() {
             </Card>
 
             <div className="flex space-x-3">
-              <Button 
-                variant="ghost" 
+              <Button
+                variant="ghost"
                 onClick={() => setStep(2)}
                 className="flex-1 h-12 rounded-xl border border-gray-200 bg-white/50 backdrop-blur-sm hover:bg-white hover:shadow-sm transition-all"
               >
                 Atrás
               </Button>
-              <Button 
+              <Button
                 onClick={() => setStep(4)}
                 disabled={!customerName || !customerPhone}
                 className="flex-1 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white h-12 rounded-xl"
@@ -675,7 +673,7 @@ export default function Booking() {
                       });
                       return;
                     }
-                    
+
                     const bookingPayload = {
                       tourId: tourId!,
                       bookingDate: selectedDate,
@@ -687,7 +685,7 @@ export default function Booking() {
                       specialRequests: `${specialRequests}${healthIssues ? `\nProblemas de salud: ${healthIssues}` : ''}`,
                       totalAmount: totalPrice.toString(),
                     };
-                    
+
                     setLocation(`/payment/${encodeURIComponent(JSON.stringify(bookingPayload))}`);
                   }}
                   className="w-full bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white h-14 text-lg font-medium rounded-xl shadow-lg"
@@ -699,8 +697,8 @@ export default function Booking() {
             </Card>
 
             <div className="flex space-x-3">
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 onClick={() => setStep(3)}
                 className="flex-1 h-12 rounded-xl bg-white/50 backdrop-blur-sm border-gray-200 text-black hover:bg-white/70"
                 disabled={bookingMutation.isPending}

@@ -49,7 +49,7 @@ export default function CustomerHome() {
 
   const filteredTours = (tours as Tour[])?.filter(tour => {
     const matchesSearch = tour.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         tour.location.toLowerCase().includes(searchTerm.toLowerCase());
+      tour.location.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesCategory = selectedCategory === "all" || tour.category === selectedCategory;
     return matchesSearch && matchesCategory && tour.status === "active";
   }) || [];
@@ -78,10 +78,10 @@ export default function CustomerHome() {
           <Skeleton className="h-16 w-full rounded-xl" />
           <Skeleton className="h-12 w-full rounded-full" />
           <div className="flex gap-2">
-            {[1,2,3,4].map(i => <Skeleton key={i} className="h-8 w-20 rounded-full" />)}
+            {[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-8 w-20 rounded-full" />)}
           </div>
           <div className="space-y-4">
-            {[1,2,3].map(i => <Skeleton key={i} className="h-64 w-full rounded-2xl" />)}
+            {[1, 2, 3].map(i => <Skeleton key={i} className="h-64 w-full rounded-2xl" />)}
           </div>
         </div>
       </div>
@@ -89,7 +89,7 @@ export default function CustomerHome() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-cyan-50">
+    <div className="min-h-screen bg-background">
       {/* Header Móvil Optimizado */}
       <header className="bg-white/80 backdrop-blur-lg shadow-sm border-b border-gray-200/50 sticky top-0 z-50">
         <div className="px-4 py-3">
@@ -97,10 +97,10 @@ export default function CustomerHome() {
             <div className="flex items-center space-x-3">
               <StaticLogo size="sm" showText={false} />
               <div>
-                <h1 className="text-xl font-bold bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent">
+                <h1 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary to-ring">
                   Gente de Mar
                 </h1>
-                <p className="text-xs text-gray-600">Puerto Vallarta • Tours Marinas</p>
+                <p className="text-xs text-muted-foreground">Puerto Vallarta • Tours Marinas</p>
               </div>
             </div>
             <div className="flex items-center space-x-3">
@@ -112,8 +112,8 @@ export default function CustomerHome() {
               {isAuthenticated ? (
                 <div className="flex items-center space-x-2">
                   <span className="text-sm text-gray-600">Hola, {user?.fullName}</span>
-                  <Button 
-                    variant="outline" 
+                  <Button
+                    variant="outline"
                     size="sm"
                     onClick={handleLogout}
                     className="rounded-full px-3 py-1 text-xs bg-gradient-to-r from-blue-600 to-cyan-600 text-white border-0 hover:from-blue-700 hover:to-cyan-700"
@@ -122,8 +122,8 @@ export default function CustomerHome() {
                   </Button>
                 </div>
               ) : (
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   onClick={() => setShowLoginModal(true)}
                   className="rounded-full px-4 py-2 text-sm bg-gradient-to-r from-blue-600 to-cyan-600 text-white border-0 hover:from-blue-700 hover:to-cyan-700"
                 >
@@ -140,10 +140,10 @@ export default function CustomerHome() {
         {/* Hero Section */}
         <div className="py-6">
           <div className="text-center mb-6">
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">
+            <h2 className="text-2xl font-bold text-foreground mb-2">
               Descubre Experiencias Únicas
             </h2>
-            <p className="text-gray-600 text-sm">
+            <p className="text-muted-foreground text-sm">
               Tours y aventuras marinas en la hermosa Bahía de Banderas
             </p>
           </div>
@@ -175,11 +175,10 @@ export default function CustomerHome() {
                 variant={selectedCategory === category.id ? "default" : "outline"}
                 size="sm"
                 onClick={() => setSelectedCategory(category.id)}
-                className={`flex-shrink-0 rounded-full px-4 py-2 text-sm font-medium transition-all ${
-                  selectedCategory === category.id
+                className={`flex-shrink-0 rounded-full px-4 py-2 text-sm font-medium transition-all ${selectedCategory === category.id
                     ? "bg-gradient-to-r from-blue-600 to-cyan-600 text-white shadow-lg scale-105"
                     : "bg-white/70 hover:bg-white border-gray-200"
-                }`}
+                  }`}
               >
                 <span className="mr-2">{category.icon}</span>
                 {category.name}
@@ -242,7 +241,7 @@ export default function CustomerHome() {
                         </div>
                       </div>
                     </div>
-                    
+
                     <CardContent className="p-4">
                       <div className="space-y-3">
                         <div>
@@ -282,7 +281,7 @@ export default function CustomerHome() {
                         <div className="flex items-center justify-between pt-2">
                           <div className="flex items-center">
                             <div className="flex text-yellow-400">
-                              {[1,2,3,4,5].map(i => (
+                              {[1, 2, 3, 4, 5].map(i => (
                                 <Star key={i} className="w-4 h-4 fill-current" />
                               ))}
                             </div>
@@ -315,9 +314,9 @@ export default function CustomerHome() {
       </div>
 
       {/* Modal de Login Opcional */}
-      <LoginModal 
-        isOpen={showLoginModal} 
-        onClose={() => setShowLoginModal(false)} 
+      <LoginModal
+        isOpen={showLoginModal}
+        onClose={() => setShowLoginModal(false)}
       />
     </div>
   );
