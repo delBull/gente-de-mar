@@ -1,9 +1,9 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage.js";
-import { insertTransactionSchema, insertTourSchema, insertBookingSchema, insertSeatHoldSchema, insertTicketRedemptionSchema } from "@shared/schema";
+import { insertTransactionSchema, insertTourSchema, insertBookingSchema, insertSeatHoldSchema, insertTicketRedemptionSchema } from "../shared/schema.js";
 import { nanoid } from "nanoid";
-import { generateAlphanumericCode, canRedeemTickets, canCreateTours } from "@shared/utils";
+import { generateAlphanumericCode, canRedeemTickets, canCreateTours } from "../shared/utils.js";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Initialize database with users on server start

@@ -3,10 +3,10 @@ import {
   type User, type InsertUser, type Business, type InsertBusiness, type Tour, type InsertTour, type Transaction, type InsertTransaction,
   type RetentionConfig, type InsertRetentionConfig, type Customer, type InsertCustomer,
   type Booking, type InsertBooking, type SeatHold, type InsertSeatHold, type TicketRedemption, type InsertTicketRedemption
-} from "@shared/schema";
+} from "../shared/schema.js";
 import { eq, desc, and, sql } from "drizzle-orm";
 import { db } from "./db.js";
-import { generateAlphanumericCode } from "@shared/utils";
+import { generateAlphanumericCode } from "../shared/utils.js";
 
 export interface IStorage {
   // Users

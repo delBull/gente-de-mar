@@ -70,11 +70,13 @@ app.get('/api/health', (req, res) => {
 
 
 
-  const PORT = Number(process.env.PORT) || 5000;
-  const HOST = "0.0.0.0";
-  server.listen(PORT, HOST, () => {
-    log(`serving on port ${PORT}`);
-  });
+  if (process.env.VERCEL !== "1") {
+    const PORT = Number(process.env.PORT) || 5000;
+    const HOST = "0.0.0.0";
+    server.listen(PORT, HOST, () => {
+      log(`serving on port ${PORT}`);
+    });
+  }
 })();
 
 // Export for serverless
