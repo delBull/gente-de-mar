@@ -47,47 +47,70 @@ app.use((err: any, req: express.Request, res: express.Response, next: express.Ne
   res.status(500).json({ error: 'Something went wrong!' });
 });
 
-// Health check endpoint
+// Health check endpoint (always available)
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok' });
+  res.json({ status: 'ok', environment: process.env.NODE_ENV });
 });
 
-(async () => {
-  try {
-    log("starting server...");
-    const server = await registerRoutes(app);
+let initializationPromise: Promise<void> | null = null;
 
-    app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
-      const status = err.status || err.statusCode || 500;
-      const message = err.message || "Internal Server Error";
-      res.status(status).json({ message });
+async function initializeApp() {
+  if (initializationPromise) return initializationPromise;
+
+  initializationPromise = (async () => {
+    try {
+      log("starting server initialization...");
+      const server = await registerRoutes(app);
+
+      if (app.get("env") === "development") {
+        await setupVite(app, server);
+      } else {
+        log("production mode: serving static files");
+        serveStatic(app);
+      }
+
+      if (process.env.VERCEL !== "1") {
+        const PORT = Number(process.env.PORT) || 5000;
+        const HOST = "0.0.0.0";
+        server.listen(PORT, HOST, () => {
+          log(`serving on port ${PORT}`);
+        });
+      } else {
+        log("vercel environment detected: listen() disabled");
+      }
+      log("initialization complete");
+    } catch (err) {
+      console.error("FATAL ERROR DURING SERVER STARTUP:", err);
+      if (!process.env.DATABASE_URL) {
+        console.error("MISSING DATABASE_URL environment variable.");
+      }
       throw err;
-    });
-
-    if (app.get("env") === "development") {
-      await setupVite(app, server);
-    } else {
-      log("production mode: serving static files");
-      serveStatic(app);
     }
+  })();
 
-    if (process.env.VERCEL !== "1") {
-      const PORT = Number(process.env.PORT) || 5000;
-      const HOST = "0.0.0.0";
-      server.listen(PORT, HOST, () => {
-        log(`serving on port ${PORT}`);
-      });
-    } else {
-      log("vercel environment detected: listen() disabled");
-    }
+  return initializationPromise;
+}
+
+// Global middleware to ensure the app is ready before processing requests
+app.use(async (req, res, next) => {
+  if (req.path === '/api/health') return next();
+  try {
+    await initializeApp();
+    next();
   } catch (err) {
-    console.error("FATAL ERROR DURING SERVER STARTUP:", err);
-    if (!process.env.DATABASE_URL) {
-      console.error("MISSING DATABASE_URL environment variable.");
-    }
-    process.exit(1);
+    res.status(500).send("Server initialization failed");
   }
-})();
+});
+
+// For Vercel, we export the app and trigger initialization
+if (process.env.VERCEL === "1") {
+  initializeApp().catch(err => {
+    console.error("Vercel background init failed:", err);
+  });
+} else {
+  // Not on Vercel: run the init logic (which will call listen())
+  initializeApp();
+}
 
 // Export for serverless
 export default app;
