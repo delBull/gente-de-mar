@@ -1,9 +1,14 @@
 import { Resend } from "resend";
 import { type Booking, type Tour } from "@shared/schema";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
+
+if (!process.env.RESEND_API_KEY) {
+    console.warn("WARNING: RESEND_API_KEY is not set. Emails will not be sent.");
+}
 
 export async function sendBookingConfirmationEmail(booking: Booking, tour: Tour) {
+    if (!resend) return { success: false, error: "Resend API key not configured" };
     if (!booking.customerEmail) return { success: false, error: "No customer email" };
 
     try {
@@ -33,6 +38,7 @@ export async function sendBookingConfirmationEmail(booking: Booking, tour: Tour)
 }
 
 export async function sendPaymentFailedEmail(booking: Booking, tour: Tour) {
+    if (!resend) return { success: false, error: "Resend API key not configured" };
     if (!booking.customerEmail) return { success: false, error: "No customer email" };
 
     try {
