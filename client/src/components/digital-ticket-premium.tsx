@@ -143,10 +143,10 @@ export default function DigitalTicketPremium({ booking }: TicketProps) {
   const addToAppleWallet = () => {
     const passData = {
       formatVersion: 1,
-      passTypeIdentifier: "pass.com.gentedemar.ticket",
+      passTypeIdentifier: "pass.com.bookeros.ticket",
       serialNumber: booking.alphanumericCode,
-      teamIdentifier: "GENTEDEMAR",
-      organizationName: "Gente de Mar",
+      teamIdentifier: "BOOKEROS",
+      organizationName: "BookerOS",
       description: booking.tour?.name || "Tour Ticket",
       backgroundColor: "rgb(0, 123, 191)",
       foregroundColor: "rgb(255, 255, 255)",
@@ -208,7 +208,7 @@ export default function DigitalTicketPremium({ booking }: TicketProps) {
 
   const addToGoogleWallet = () => {
     const googlePassData = {
-      iss: "gentedemar@tickets.com",
+      iss: "bookeros@tickets.com",
       aud: "google",
       typ: "savetowallet",
       payload: {
@@ -226,7 +226,7 @@ export default function DigitalTicketPremium({ booking }: TicketProps) {
             cardTitle: {
               defaultValue: {
                 language: "es-MX",
-                value: "Gente de Mar"
+                value: "BookerOS"
               }
             },
             subheader: {
@@ -339,7 +339,7 @@ export default function DigitalTicketPremium({ booking }: TicketProps) {
             </AnimatePresence>
           </DialogTitle>
         </DialogHeader>
-        
+
         <motion.div
           id="digital-ticket-content"
           initial={{ opacity: 0, scale: 0.9 }}
@@ -352,8 +352,8 @@ export default function DigitalTicketPremium({ booking }: TicketProps) {
             {/* Background Pattern */}
             <div className="absolute inset-0 opacity-10">
               <svg className="w-full h-full" viewBox="0 0 400 400" fill="none">
-                <path d="M0 200L50 175L100 200L150 175L200 200L250 175L300 200L350 175L400 200V400H0V200Z" fill="white"/>
-                <path d="M0 100L50 75L100 100L150 75L200 100L250 75L300 100L350 75L400 100V0H0V100Z" fill="white"/>
+                <path d="M0 200L50 175L100 200L150 175L200 200L250 175L300 200L350 175L400 200V400H0V200Z" fill="white" />
+                <path d="M0 100L50 75L100 100L150 75L200 100L250 75L300 100L350 75L400 100V0H0V100Z" fill="white" />
               </svg>
             </div>
 
@@ -364,8 +364,8 @@ export default function DigitalTicketPremium({ booking }: TicketProps) {
               transition={{ delay: 0.2, duration: 0.5 }}
               className="relative z-10 text-center mb-6"
             >
-              <h2 className="text-2xl font-bold mb-1">🌊 Gente de Mar</h2>
-              <p className="text-cyan-100 text-sm">Experiencias Inolvidables</p>
+              <h2 className="text-2xl font-black italic tracking-tighter">BookerOS</h2>
+              <p className="text-cyan-100 text-xs uppercase tracking-widest font-bold">Experiencias Inolvidables</p>
             </motion.div>
 
             {/* Status Badge */}
@@ -375,12 +375,11 @@ export default function DigitalTicketPremium({ booking }: TicketProps) {
               transition={{ delay: 0.3, duration: 0.4 }}
               className="flex justify-center mb-6"
             >
-              <Badge 
-                className={`${
-                  booking.status === 'confirmed' 
-                    ? 'bg-green-500 hover:bg-green-600' 
-                    : 'bg-red-500 hover:bg-red-600'
-                } text-white px-4 py-2 text-sm font-semibold shadow-lg`}
+              <Badge
+                className={`${booking.status === 'confirmed'
+                  ? 'bg-green-500 hover:bg-green-600'
+                  : 'bg-red-500 hover:bg-red-600'
+                  } text-white px-4 py-2 text-sm font-semibold shadow-lg`}
               >
                 {booking.status === 'confirmed' ? (
                   <>
@@ -421,9 +420,9 @@ export default function DigitalTicketPremium({ booking }: TicketProps) {
             >
               <div className="bg-white p-4 rounded-xl shadow-lg">
                 {qrCodeDataUrl ? (
-                  <img 
-                    src={qrCodeDataUrl} 
-                    alt="Código QR del ticket" 
+                  <img
+                    src={qrCodeDataUrl}
+                    alt="Código QR del ticket"
                     className="w-32 h-32 rounded-lg"
                   />
                 ) : (
@@ -484,7 +483,7 @@ export default function DigitalTicketPremium({ booking }: TicketProps) {
               <p className="text-cyan-200 text-xs mb-1">CLIENTE</p>
               <p className="font-semibold">{booking.customerName}</p>
               <p className="text-cyan-200 text-sm">{booking.customerPhone}</p>
-              
+
               <div className="mt-3 flex items-center justify-between">
                 <div>
                   <p className="text-cyan-200 text-xs">CÓDIGO DE RESPALDO</p>
@@ -547,7 +546,7 @@ export default function DigitalTicketPremium({ booking }: TicketProps) {
                   </Button>
                 </motion.div>
               )}
-              
+
               {isAndroid && (
                 <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
                   <Button

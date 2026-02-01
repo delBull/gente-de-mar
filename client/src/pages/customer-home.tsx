@@ -97,10 +97,10 @@ export default function CustomerHome() {
             <div className="flex items-center space-x-3">
               <StaticLogo size="sm" showText={false} />
               <div>
-                <h1 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary to-ring">
-                  Gente de Mar
+                <h1 className="text-xl font-black bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-cyan-600 tracking-tighter italic">
+                  BookerOS
                 </h1>
-                <p className="text-xs text-muted-foreground">Puerto Vallarta • Tours Marinas</p>
+                <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold">Premium Experiences</p>
               </div>
             </div>
             <div className="flex items-center space-x-3">
@@ -176,8 +176,8 @@ export default function CustomerHome() {
                 size="sm"
                 onClick={() => setSelectedCategory(category.id)}
                 className={`flex-shrink-0 rounded-full px-4 py-2 text-sm font-medium transition-all ${selectedCategory === category.id
-                    ? "bg-gradient-to-r from-blue-600 to-cyan-600 text-white shadow-lg scale-105"
-                    : "bg-white/70 hover:bg-white border-gray-200"
+                  ? "bg-gradient-to-r from-blue-600 to-cyan-600 text-white shadow-lg scale-105"
+                  : "bg-white/70 hover:bg-white border-gray-200"
                   }`}
               >
                 <span className="mr-2">{category.icon}</span>

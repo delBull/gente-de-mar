@@ -7,16 +7,16 @@ import { es } from "date-fns/locale";
 import QRCode from "qrcode";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
-import { 
-  Download, 
-  Share2, 
-  Printer, 
-  Calendar, 
-  MapPin, 
-  Clock, 
-  Users, 
-  Phone, 
-  Mail, 
+import {
+  Download,
+  Share2,
+  Printer,
+  Calendar,
+  MapPin,
+  Clock,
+  Users,
+  Phone,
+  Mail,
   Camera,
   Wallet,
   Star,
@@ -102,7 +102,7 @@ export default function Ticket() {
 
   const downloadAsImage = async () => {
     if (!ticketRef.current || !booking) return;
-    
+
     setIsDownloading(true);
     try {
       const canvas = await html2canvas(ticketRef.current, {
@@ -110,12 +110,12 @@ export default function Ticket() {
         backgroundColor: '#ffffff',
         useCORS: true,
       });
-      
+
       const link = document.createElement('a');
       link.download = `ticket-${booking.tour?.name}-${booking.id}.png`;
       link.href = canvas.toDataURL();
       link.click();
-      
+
       toast({
         title: "¡Descarga completada!",
         description: "Tu ticket se ha guardado como imagen",
@@ -132,22 +132,22 @@ export default function Ticket() {
 
   const downloadAsPDF = async () => {
     if (!ticketRef.current || !booking) return;
-    
+
     setIsDownloading(true);
     try {
       const canvas = await html2canvas(ticketRef.current, {
         scale: 2,
         backgroundColor: '#ffffff',
       });
-      
+
       const imgData = canvas.toDataURL('image/png');
       const pdf = new jsPDF('p', 'mm', 'a4');
       const imgWidth = 190;
       const imgHeight = (canvas.height * imgWidth) / canvas.width;
-      
+
       pdf.addImage(imgData, 'PNG', 10, 10, imgWidth, imgHeight);
       pdf.save(`ticket-${booking.tour?.name}-${booking.id}.pdf`);
-      
+
       toast({
         title: "¡PDF generado!",
         description: "Tu ticket se ha guardado como PDF",
@@ -168,16 +168,16 @@ export default function Ticket() {
 
   const addToAppleWallet = () => {
     if (!booking) return;
-    
+
     // Create a basic passbook pass URL for Apple Wallet
     const passData = {
       formatVersion: 1,
-      passTypeIdentifier: "pass.com.gentedemar.ticket",
+      passTypeIdentifier: "pass.com.bookeros.ticket",
       serialNumber: booking.id.toString(),
-      teamIdentifier: "GENTEDEMAR",
-      organizationName: "Gente de Mar",
+      teamIdentifier: "BOOKEROS",
+      organizationName: "BookerOS",
       description: `Tour: ${booking.tour?.name}`,
-      logoText: "Gente de Mar",
+      logoText: "BookerOS",
       foregroundColor: "rgb(255, 255, 255)",
       backgroundColor: "rgb(30, 64, 175)",
       labelColor: "rgb(255, 255, 255)",
@@ -224,21 +224,21 @@ export default function Ticket() {
     // For now, show instructions to user
     toast({
       title: "Apple Wallet",
-      description: "Mantén presionado el código QR para agregarlo a Apple Wallet, o contacta a Gente de Mar para obtener el pase oficial.",
+      description: "Mantén presionado el código QR para agregarlo a Apple Wallet, o contacta a soporte de BookerOS para obtener el pase oficial.",
     });
   };
 
   const addToGoogleWallet = () => {
     if (!booking) return;
-    
+
     // Google Pay API would require server-side implementation
     toast({
       title: "Google Wallet",
-      description: "Guarda la imagen del ticket o contacta a Gente de Mar para obtener el pase oficial.",
+      description: "Guarda la imagen del ticket o contacta a soporte de BookerOS para obtener el pase oficial.",
     });
   };
 
-  const shareText = booking ? `🌊 ¡Mi reserva confirmada en Gente de Mar!
+  const shareText = booking ? `🌊 ¡Mi reserva confirmada en BookerOS!
 🎫 Tour: ${booking.tour?.name}
 📅 Fecha: ${format(new Date(booking.bookingDate), "dd 'de' MMMM yyyy", { locale: es })}
 👥 ${booking.adults} adulto${booking.adults !== 1 ? 's' : ''} ${booking.children > 0 ? `+ ${booking.children} niño${booking.children !== 1 ? 's' : ''}` : ''}
@@ -313,9 +313,9 @@ export default function Ticket() {
         >
           <div className="text-center sm:text-left mb-4 sm:mb-0">
             <h1 className="text-3xl font-bold text-gray-900 mb-2">¡Reserva Confirmada!</h1>
-            <p className="text-gray-600">Tu aventura en Gente de Mar te espera</p>
+            <p className="text-gray-600">Tu aventura gestionada por BookerOS te espera</p>
           </div>
-          
+
           {/* Action Buttons */}
           <div className="flex flex-wrap gap-2">
             <Button
@@ -328,7 +328,7 @@ export default function Ticket() {
               <Download className="w-4 h-4" />
               {isDownloading ? "Generando..." : "Imagen"}
             </Button>
-            
+
             <Button
               onClick={downloadAsPDF}
               disabled={isDownloading}
@@ -339,7 +339,7 @@ export default function Ticket() {
               <Download className="w-4 h-4" />
               PDF
             </Button>
-            
+
             <Button
               onClick={handlePrint}
               variant="ghost"
@@ -349,7 +349,7 @@ export default function Ticket() {
               <Printer className="w-4 h-4" />
               Imprimir
             </Button>
-            
+
             <div className="relative">
               <Button
                 onClick={() => setShowShareMenu(!showShareMenu)}
@@ -360,7 +360,7 @@ export default function Ticket() {
                 <Share2 className="w-4 h-4" />
                 Compartir
               </Button>
-              
+
               <AnimatePresence>
                 {showShareMenu && (
                   <motion.div
@@ -376,21 +376,21 @@ export default function Ticket() {
                           <span className="text-sm">WhatsApp</span>
                         </div>
                       </WhatsappShareButton>
-                      
+
                       <FacebookShareButton url={shareUrl}>
                         <div className="flex items-center gap-2 p-2 rounded hover:bg-gray-50">
                           <FacebookIcon size={20} round />
                           <span className="text-sm">Facebook</span>
                         </div>
                       </FacebookShareButton>
-                      
+
                       <TwitterShareButton url={shareUrl} title={shareText}>
                         <div className="flex items-center gap-2 p-2 rounded hover:bg-gray-50">
                           <TwitterIcon size={20} round />
                           <span className="text-sm">Twitter</span>
                         </div>
                       </TwitterShareButton>
-                      
+
                       <TelegramShareButton url={shareUrl} title={shareText}>
                         <div className="flex items-center gap-2 p-2 rounded hover:bg-gray-50">
                           <TelegramIcon size={20} round />
@@ -398,7 +398,7 @@ export default function Ticket() {
                         </div>
                       </TelegramShareButton>
                     </div>
-                    
+
                     <div className="border-t pt-3 space-y-2">
                       <Button
                         onClick={addToAppleWallet}
@@ -409,7 +409,7 @@ export default function Ticket() {
                         <Wallet className="w-4 h-4 mr-2" />
                         Apple Wallet
                       </Button>
-                      
+
                       <Button
                         onClick={addToGoogleWallet}
                         variant="ghost"
@@ -447,8 +447,8 @@ export default function Ticket() {
                       <Anchor className="w-6 h-6" />
                     </div>
                     <div>
-                      <h2 className="text-2xl font-bold">Gente de Mar</h2>
-                      <p className="text-blue-100">Tours & Adventures</p>
+                      <h2 className="text-2xl font-black italic tracking-tighter">BookerOS</h2>
+                      <p className="text-blue-100 text-xs uppercase tracking-widest font-bold">Tours & Adventures</p>
                     </div>
                   </div>
                   <Badge className="bg-green-500 text-white border-0">
@@ -456,13 +456,13 @@ export default function Ticket() {
                     Confirmado
                   </Badge>
                 </div>
-                
+
                 <div className="text-center">
                   <h1 className="text-3xl md:text-4xl font-bold mb-2">{booking.tour?.name}</h1>
                   <p className="text-blue-100 text-lg">{booking.tour?.description}</p>
                 </div>
               </div>
-              
+
               {/* Wave decoration */}
               <div className="absolute bottom-0 left-0 w-full overflow-hidden">
                 <svg viewBox="0 0 1200 120" preserveAspectRatio="none" className="relative block w-full h-8">
@@ -484,15 +484,15 @@ export default function Ticket() {
                       transition={{ delay: 0.3 }}
                       className="relative rounded-lg overflow-hidden h-48 md:h-64"
                     >
-                      <img 
-                        src={booking.tour.imageUrl} 
+                      <img
+                        src={booking.tour.imageUrl}
                         alt={booking.tour.name}
                         className="w-full h-full object-cover"
                       />
                       <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
                     </motion.div>
                   )}
-                  
+
                   {/* Trip Details */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <motion.div
@@ -509,7 +509,7 @@ export default function Ticket() {
                         </p>
                       </div>
                     </motion.div>
-                    
+
                     <motion.div
                       initial={{ opacity: 0, x: 20 }}
                       animate={{ opacity: 1, x: 0 }}
@@ -524,7 +524,7 @@ export default function Ticket() {
                         </p>
                       </div>
                     </motion.div>
-                    
+
                     <motion.div
                       initial={{ opacity: 0, x: -20 }}
                       animate={{ opacity: 1, x: 0 }}
@@ -539,7 +539,7 @@ export default function Ticket() {
                         </p>
                       </div>
                     </motion.div>
-                    
+
                     <motion.div
                       initial={{ opacity: 0, x: 20 }}
                       animate={{ opacity: 1, x: 0 }}
@@ -550,7 +550,7 @@ export default function Ticket() {
                       <div>
                         <p className="text-sm font-medium text-gray-600">Huéspedes</p>
                         <p className="text-lg font-semibold text-gray-900">
-                          {booking.adults} adulto{booking.adults !== 1 ? 's' : ''} 
+                          {booking.adults} adulto{booking.adults !== 1 ? 's' : ''}
                           {booking.children > 0 && ` + ${booking.children} niño${booking.children !== 1 ? 's' : ''}`}
                         </p>
                       </div>
@@ -687,7 +687,7 @@ export default function Ticket() {
                     <h3 className="font-semibold text-gray-900 mb-3">¿Necesitas Ayuda?</h3>
                     <div className="space-y-2 text-sm text-gray-600">
                       <p>📞 +52 322 123 4567</p>
-                      <p>📧 info@gentedemar.com</p>
+                      <p>📧 info@bookeros.com</p>
                       <p>💬 WhatsApp disponible 24/7</p>
                     </div>
                   </motion.div>

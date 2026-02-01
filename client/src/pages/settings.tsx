@@ -17,11 +17,11 @@ import MobileSidebar from "@/components/mobile-sidebar";
 export default function Settings() {
   const [profileData, setProfileData] = useState({
     fullName: "Darío",
-    email: "dario@gentedemar.com",
+    email: "dario@bookeros.com",
     phone: "+52 322 123 4567",
-    businessName: "Gente de Mar",
+    businessName: "BookerOS Tours",
     businessAddress: "Puerto Vallarta, Jalisco",
-    businessDescription: "Tours y experiencias marítimas en Puerto Vallarta"
+    businessDescription: "Plataforma Premium de Gestión de Experiencias y Tours"
   });
 
   const [notificationSettings, setNotificationSettings] = useState({
@@ -110,7 +110,7 @@ export default function Settings() {
   return (
     <div className="flex min-h-screen bg-gray-50">
       <MobileSidebar />
-      
+
       <div className="flex-1 md:ml-64 max-w-full overflow-hidden">
         <header className="bg-white border-b border-gray-200 p-4 md:p-6">
           <div className="flex justify-between items-center max-w-7xl mx-auto">
@@ -130,7 +130,7 @@ export default function Settings() {
               <TabsTrigger value="payments">Pagos</TabsTrigger>
               <TabsTrigger value="retention">Retenciones</TabsTrigger>
             </TabsList>
-            
+
             {/* Mobile Navigation - Solo iconos */}
             <TabsList className="md:hidden grid w-full grid-cols-4 gap-2">
               <TabsTrigger value="profile" className="relative group">
@@ -179,7 +179,7 @@ export default function Settings() {
                         className="bg-transparent border-gray-300 focus:border-blue-500 text-white"
                       />
                     </div>
-                    
+
                     <div className="space-y-2">
                       <Label htmlFor="email" className="text-white">Correo Electrónico</Label>
                       <Input
@@ -190,7 +190,7 @@ export default function Settings() {
                         className="bg-transparent border-gray-300 focus:border-blue-500 text-white"
                       />
                     </div>
-                    
+
                     <div className="space-y-2">
                       <Label htmlFor="phone" className="text-white">Teléfono</Label>
                       <Input
@@ -200,7 +200,7 @@ export default function Settings() {
                         className="bg-transparent border-gray-300 focus:border-blue-500 text-white"
                       />
                     </div>
-                    
+
                     <div className="space-y-2">
                       <Label htmlFor="businessName" className="text-white">Nombre del Negocio</Label>
                       <Input
@@ -211,7 +211,7 @@ export default function Settings() {
                       />
                     </div>
                   </div>
-                  
+
                   <div className="space-y-2">
                     <Label htmlFor="businessAddress" className="text-white">Dirección del Negocio</Label>
                     <Input
@@ -221,7 +221,7 @@ export default function Settings() {
                       className="bg-transparent border-gray-300 focus:border-blue-500 text-white"
                     />
                   </div>
-                  
+
                   <div className="space-y-2">
                     <Label htmlFor="businessDescription" className="text-white">Descripción del Negocio</Label>
                     <Textarea
@@ -232,7 +232,7 @@ export default function Settings() {
                       className="bg-transparent border-gray-300 focus:border-blue-500 text-white"
                     />
                   </div>
-                  
+
                   <Button onClick={handleProfileSave} className="btn-ocean-primary">
                     <Save className="w-4 h-4 mr-2" />
                     Guardar Cambios
@@ -262,9 +262,9 @@ export default function Settings() {
                         onCheckedChange={(checked) => setNotificationSettings(prev => ({ ...prev, emailNotifications: checked }))}
                       />
                     </div>
-                    
+
                     <Separator />
-                    
+
                     <div className="flex items-center justify-between">
                       <div className="space-y-0.5">
                         <Label className="text-white">Notificaciones SMS</Label>
@@ -275,9 +275,9 @@ export default function Settings() {
                         onCheckedChange={(checked) => setNotificationSettings(prev => ({ ...prev, smsNotifications: checked }))}
                       />
                     </div>
-                    
+
                     <Separator />
-                    
+
                     <div className="flex items-center justify-between">
                       <div className="space-y-0.5">
                         <Label className="text-white">Notificaciones Push</Label>
@@ -288,9 +288,9 @@ export default function Settings() {
                         onCheckedChange={(checked) => setNotificationSettings(prev => ({ ...prev, pushNotifications: checked }))}
                       />
                     </div>
-                    
+
                     <Separator />
-                    
+
                     <div className="flex items-center justify-between">
                       <div className="space-y-0.5">
                         <Label>Alertas de Reserva</Label>
@@ -301,9 +301,9 @@ export default function Settings() {
                         onCheckedChange={(checked) => setNotificationSettings(prev => ({ ...prev, bookingAlerts: checked }))}
                       />
                     </div>
-                    
+
                     <Separator />
-                    
+
                     <div className="flex items-center justify-between">
                       <div className="space-y-0.5">
                         <Label className="text-white">Alertas de Pago</Label>
@@ -314,9 +314,9 @@ export default function Settings() {
                         onCheckedChange={(checked) => setNotificationSettings(prev => ({ ...prev, paymentAlerts: checked }))}
                       />
                     </div>
-                    
+
                     <Separator />
-                    
+
                     <div className="flex items-center justify-between">
                       <div className="space-y-0.5">
                         <Label className="text-white">Emails de Marketing</Label>
@@ -328,7 +328,7 @@ export default function Settings() {
                       />
                     </div>
                   </div>
-                  
+
                   <Button onClick={handleNotificationSave} className="bg-primary text-primary-foreground hover:bg-primary/90">
                     <Save className="w-4 h-4 mr-2" />
                     Guardar Preferencias
@@ -361,7 +361,7 @@ export default function Settings() {
                         </SelectContent>
                       </Select>
                     </div>
-                    
+
                     <div className="space-y-2">
                       <Label htmlFor="payoutSchedule" className="text-white">Frecuencia de Pagos</Label>
                       <Select value={paymentSettings.payoutSchedule} onValueChange={(value) => setPaymentSettings(prev => ({ ...prev, payoutSchedule: value }))}>
@@ -375,7 +375,7 @@ export default function Settings() {
                         </SelectContent>
                       </Select>
                     </div>
-                    
+
                     <div className="space-y-2">
                       <Label htmlFor="minimumPayout" className="text-white">Pago Mínimo</Label>
                       <Input
@@ -386,7 +386,7 @@ export default function Settings() {
                         className="bg-transparent border-gray-300 focus:border-blue-500 text-white"
                       />
                     </div>
-                    
+
                     <div className="space-y-2">
                       <Label htmlFor="bankAccount" className="text-white">Cuenta Bancaria</Label>
                       <Input
@@ -397,7 +397,7 @@ export default function Settings() {
                       />
                     </div>
                   </div>
-                  
+
                   <div className="flex items-center justify-between p-4 bg-muted rounded-lg">
                     <div className="space-y-0.5">
                       <Label>Pagos Automáticos</Label>
@@ -408,7 +408,7 @@ export default function Settings() {
                       onCheckedChange={(checked) => setPaymentSettings(prev => ({ ...prev, autoPayouts: checked }))}
                     />
                   </div>
-                  
+
                   <Button onClick={handlePaymentSave} className="bg-primary text-primary-foreground hover:bg-primary/90">
                     <Save className="w-4 h-4 mr-2" />
                     Guardar Configuración
@@ -442,7 +442,7 @@ export default function Settings() {
                       />
                       <p className="text-sm text-muted-foreground">Porcentaje que retiene la aplicación por transacción</p>
                     </div>
-                    
+
                     <div className="space-y-2">
                       <Label htmlFor="taxRate" className="flex items-center gap-2">
                         <Receipt className="w-4 h-4 text-yellow-400" />
@@ -457,7 +457,7 @@ export default function Settings() {
                       />
                       <p className="text-sm text-muted-foreground">Impuesto al valor agregado aplicable</p>
                     </div>
-                    
+
                     <div className="space-y-2">
                       <Label htmlFor="bankCommission" className="flex items-center gap-2">
                         <Building className="w-4 h-4 text-blue-400" />
@@ -472,7 +472,7 @@ export default function Settings() {
                       />
                       <p className="text-sm text-muted-foreground">Comisión cobrada por el procesador de pagos</p>
                     </div>
-                    
+
                     <div className="space-y-2">
                       <Label htmlFor="otherRetentions" className="flex items-center gap-2">
                         <Shield className="w-4 h-4 text-purple-400" />
@@ -488,7 +488,7 @@ export default function Settings() {
                       <p className="text-sm text-muted-foreground">Retenciones adicionales configurables</p>
                     </div>
                   </div>
-                  
+
                   <div className="p-4 bg-muted rounded-lg">
                     <h4 className="font-medium text-foreground mb-2">Resumen de Distribución</h4>
                     <div className="space-y-2 text-sm">
@@ -512,17 +512,17 @@ export default function Settings() {
                       <div className="flex justify-between font-medium">
                         <span className="text-foreground">Pago al Vendedor:</span>
                         <span className="text-green-400">
-                          {(100 - parseFloat(retentionData.appCommissionRate || "0") - 
-                            parseFloat(retentionData.taxRate || "0") - 
-                            parseFloat(retentionData.bankCommissionRate || "0") - 
+                          {(100 - parseFloat(retentionData.appCommissionRate || "0") -
+                            parseFloat(retentionData.taxRate || "0") -
+                            parseFloat(retentionData.bankCommissionRate || "0") -
                             parseFloat(retentionData.otherRetentionsRate || "0")).toFixed(2)}%
                         </span>
                       </div>
                     </div>
                   </div>
-                  
-                  <Button 
-                    onClick={handleRetentionSave} 
+
+                  <Button
+                    onClick={handleRetentionSave}
                     disabled={updateRetentionMutation.isPending}
                     className="bg-primary text-primary-foreground hover:bg-primary/90"
                   >

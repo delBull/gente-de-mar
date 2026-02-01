@@ -1,63 +1,32 @@
 import { motion } from "framer-motion";
-import { Waves, Anchor, Ship } from "lucide-react";
+import { Waves } from "lucide-react";
 
 export default function AnimatedLogo() {
   return (
     <div className="flex flex-col items-center justify-center py-8">
       {/* Container principal con animación de entrada */}
       <motion.div
-        initial={{ opacity: 0, scale: 0.5 }}
-        animate={{ opacity: 1, scale: 1 }}
+        initial={{ opacity: 0, scale: 0.5, rotate: -10 }}
+        animate={{ opacity: 1, scale: 1, rotate: 0 }}
         transition={{ duration: 0.8, ease: "easeOut" }}
         className="relative"
       >
-        {/* Círculo de fondo con gradiente */}
         <motion.div
-          animate={{ 
+          animate={{
             boxShadow: [
-              "0 0 20px rgba(59, 130, 246, 0.3)",
-              "0 0 40px rgba(59, 130, 246, 0.5)",
-              "0 0 20px rgba(59, 130, 246, 0.3)"
+              "0 0 20px rgba(59, 130, 246, 0.2)",
+              "0 0 40px rgba(59, 130, 246, 0.4)",
+              "0 0 20px rgba(59, 130, 246, 0.2)"
             ]
           }}
           transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
-          className="w-24 h-24 rounded-full bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center relative overflow-hidden"
+          className="w-28 h-28 rounded-2xl bg-white flex items-center justify-center relative shadow-xl overflow-hidden"
         >
-          {/* Ondas de fondo animadas */}
-          <motion.div
-            animate={{ 
-              y: [0, -8, 0],
-              scale: [1, 1.1, 1]
-            }}
-            transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-            className="absolute bottom-2"
-          >
-            <Waves className="w-16 h-16 text-blue-100 opacity-30" />
-          </motion.div>
-          
-          {/* Barco principal */}
-          <motion.div
-            animate={{ 
-              y: [0, -4, 0],
-              rotate: [0, 2, 0, -2, 0]
-            }}
-            transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-            className="relative z-10"
-          >
-            <Ship className="w-10 h-10 text-white" />
-          </motion.div>
-          
-          {/* Ancla decorativa */}
-          <motion.div
-            animate={{ 
-              rotate: [0, 10, -10, 0],
-              opacity: [0.7, 1, 0.7]
-            }}
-            transition={{ duration: 3, repeat: Infinity, ease: "easeInOut", delay: 1 }}
-            className="absolute top-1 right-1"
-          >
-            <Anchor className="w-4 h-4 text-blue-200" />
-          </motion.div>
+          <img
+            src="/logo.png"
+            alt="BookerOS Logo"
+            className="w-24 h-24 object-contain"
+          />
         </motion.div>
       </motion.div>
 
@@ -69,22 +38,22 @@ export default function AnimatedLogo() {
         className="mt-6 text-center"
       >
         <motion.h2
-          animate={{ 
-            color: ["#1f2937", "#3b82f6", "#1f2937"]
+          animate={{
+            color: ["#1f2937", "#2563eb", "#1f2937"]
           }}
           transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-          className="text-xl font-bold"
+          className="text-2xl font-black tracking-tighter"
         >
-          Gente de Mar
+          BookerOS
         </motion.h2>
-        
+
         <motion.p
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 1, delay: 0.6 }}
-          className="text-sm text-gray-500 mt-1"
+          className="text-xs uppercase tracking-[0.3em] text-blue-600 font-bold mt-1"
         >
-          Sistema de Tours
+          Operating System for Tours
         </motion.p>
       </motion.div>
 

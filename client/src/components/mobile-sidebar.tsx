@@ -105,7 +105,7 @@ export default function MobileSidebar() {
           {!isCollapsed && (
             <div className="flex items-center space-x-2">
               <StaticLogo size="sm" showText={false} />
-              <h1 className="text-lg font-semibold text-sidebar-foreground">Gente de Mar</h1>
+              <h1 className="text-xl font-black text-sidebar-foreground tracking-tighter">BookerOS</h1>
             </div>
           )}
           <Button
@@ -196,10 +196,10 @@ export default function MobileSidebar() {
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b border-sidebar-border">
         <div className="flex items-center space-x-2">
-          <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-            <Globe className="w-5 h-5 text-primary-foreground" />
+          <div className="w-8 h-8 rounded-lg flex items-center justify-center overflow-hidden">
+            <img src="/logo.png" alt="BS" className="w-full h-full object-contain" />
           </div>
-          <h1 className="text-lg font-semibold text-sidebar-foreground">Gente de Mar</h1>
+          <h1 className="text-xl font-black text-sidebar-foreground tracking-tighter">BookerOS</h1>
         </div>
         <div className="flex items-center space-x-2">
           {isAuthenticated && (user?.role === 'business' || user?.role === 'manager') && (
@@ -235,8 +235,8 @@ export default function MobileSidebar() {
             <Link key={item.name} href={item.href}>
               <div
                 className={`flex items-center space-x-3 p-3 rounded-lg transition-colors cursor-pointer ${isActive
-                    ? 'bg-sidebar-accent text-primary font-medium'
-                    : 'text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
+                  ? 'bg-sidebar-accent text-primary font-medium'
+                  : 'text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
                   }`}
                 onClick={() => {
                   setIsOpen(false);
@@ -256,8 +256,8 @@ export default function MobileSidebar() {
           <Link href="/customers">
             <div
               className={`flex items-center space-x-3 p-3 rounded-lg transition-colors cursor-pointer ${location === '/customers'
-                  ? 'bg-sidebar-accent text-primary font-medium'
-                  : 'text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
+                ? 'bg-sidebar-accent text-primary font-medium'
+                : 'text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
                 }`}
               onClick={() => {
                 setIsOpen(false);

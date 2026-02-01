@@ -138,7 +138,7 @@ export class MemStorage implements IStorage {
       id: 1,
       username: "admin",
       password: "admin123",
-      email: "admin@gentedemar.com",
+      email: "admin@bookeros.com",
       fullName: "Administrador Master",
       role: "master_admin",
       isActive: true,
@@ -152,7 +152,7 @@ export class MemStorage implements IStorage {
       id: 2,
       username: "dario",
       password: "password",
-      email: "dario@gentedemar.com",
+      email: "dario@bookeros.com",
       fullName: "Darío",
       role: "business",
       isActive: true,
@@ -166,7 +166,7 @@ export class MemStorage implements IStorage {
       id: 3,
       username: "manager",
       password: "manager123",
-      email: "manager@gentedemar.com",
+      email: "manager@bookeros.com",
       fullName: "Manager de Tours",
       role: "manager",
       isActive: true,
@@ -715,9 +715,9 @@ export class DatabaseStorage implements IStorage {
     try {
       // Create default business first
       const [defaultBusiness] = await db.insert(businesses).values({
-        name: "Gente de Mar Tours",
-        description: "Empresa principal de tours marítimos",
-        contactEmail: "info@gentedemar.com",
+        name: "BookerOS Tours",
+        description: "Plataforma Premium de Gestión de Experiencias",
+        contactEmail: "info@bookeros.com",
         contactPhone: "+52 322 123 4567",
         address: "Puerto Vallarta, Jalisco"
       }).onConflictDoNothing().returning();
@@ -728,9 +728,9 @@ export class DatabaseStorage implements IStorage {
       const usersToCreate = [
         {
           username: "Dario",
-          password: "gentedemar",
-          email: "dario@gentedemar.com",
-          fullName: "Dario - Master Admin",
+          password: "bookeros2026",
+          email: "dario@bookeros.com",
+          fullName: "Dario - BookerOS Admin",
           role: "master_admin" as const,
           businessId: null,
           permissions: ["all"]
@@ -738,7 +738,7 @@ export class DatabaseStorage implements IStorage {
         {
           username: "Business",
           password: "tour2025",
-          email: "business@gentedemar.com",
+          email: "business@bookeros.com",
           fullName: "Business User",
           role: "business" as const,
           businessId: businessId,
@@ -747,7 +747,7 @@ export class DatabaseStorage implements IStorage {
         {
           username: "Manager",
           password: "admin",
-          email: "manager@gentedemar.com",
+          email: "manager@bookeros.com",
           fullName: "Manager User",
           role: "manager" as const,
           businessId: businessId,

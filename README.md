@@ -1,4 +1,4 @@
-# Gente de Mar - Tours Booking Platform
+# BookerOS - Tours Booking Platform
 
 Una plataforma integral para la gestión de tours marítimos con interfaz de administración y portal de reservas para clientes.
 
@@ -30,8 +30,8 @@ Una plataforma integral para la gestión de tours marítimos con interfaz de adm
 ### 1. Clonar el repositorio
 
 ```bash
-git clone https://github.com/deBull/gente-de-mar.git
-cd gente-de-mar
+git clone https://github.com/deBull/bookeros.git
+cd bookeros
 ```
 
 ### 2. Instalar dependencias
@@ -50,7 +50,7 @@ sudo apt install postgresql postgresql-contrib
 
 # Crear base de datos
 sudo -u postgres createuser --interactive
-sudo -u postgres createdb gente_de_mar
+sudo -u postgres createdb bookeros
 ```
 
 #### Opción B: PostgreSQL en la nube (Recomendado para producción)
@@ -64,14 +64,14 @@ Crear archivo `.env` en la raíz:
 
 ```env
 # Base de Datos
-DATABASE_URL="postgresql://usuario:password@localhost:5432/gente_de_mar"
+DATABASE_URL="postgresql://usuario:password@localhost:5432/bookeros"
 
 # Alternativa para componentes separados
 PGHOST=localhost
 PGPORT=5432
 PGUSER=tu_usuario
 PGPASSWORD=tu_password
-PGDATABASE=gente_de_mar
+PGDATABASE=bookeros
 
 # Sesiones (genera una clave secreta)
 SESSION_SECRET="tu_clave_secreta_muy_segura_aqui"
@@ -133,7 +133,7 @@ vercel env add SESSION_SECRET
 ### 4. Deploy con GitHub (Recomendado)
 
 1. Conecta tu repo a Vercel: https://vercel.com/new
-2. Selecciona tu repositorio `gente-de-mar`
+2. Selecciona tu repositorio `bookeros`
 3. Configura las variables de entorno:
    - `DATABASE_URL`: Tu URL de PostgreSQL
    - `SESSION_SECRET`: Clave secreta para sesiones
@@ -158,7 +158,7 @@ npm start           # Iniciar servidor de producción
 
 El sistema inicializa con estos usuarios para pruebas:
 
-- **Master Admin**: `Dario` / `gentedemar`
+- **Master Admin**: `Dario` / `bookeros2026`
 - **Business**: `Business` / `tour2025` 
 - **Manager**: `Manager` / `admin`
 
@@ -212,4 +212,4 @@ Para dudas o problemas:
 
 ---
 
-**Desarrollado para Gente de Mar** 🌊
+**BookerOS - Tour Management System** 🚀

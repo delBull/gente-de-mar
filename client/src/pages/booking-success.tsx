@@ -78,9 +78,9 @@ export default function BookingSuccess() {
           particle.style.pointerEvents = 'none';
           particle.style.zIndex = '9999';
           particle.style.animation = 'fall 3s linear forwards';
-          
+
           document.body.appendChild(particle);
-          
+
           setTimeout(() => {
             particle.remove();
           }, 3000);
@@ -212,7 +212,7 @@ export default function BookingSuccess() {
                     {booking.tour?.location}
                   </p>
                 </div>
-                
+
                 {booking.tour?.description && (
                   <p className="text-gray-700">{booking.tour.description}</p>
                 )}
@@ -262,7 +262,7 @@ export default function BookingSuccess() {
                     <span className="text-gray-700">Fecha del tour:</span>
                     <span className="font-medium text-gray-900">{formatDate(booking.bookingDate)}</span>
                   </div>
-                  
+
                   <div className="flex items-center justify-between">
                     <span className="text-gray-700">Participantes:</span>
                     <span className="font-medium flex items-center text-gray-900">
@@ -352,7 +352,7 @@ export default function BookingSuccess() {
               <CardContent className="text-blue-700 space-y-2 text-sm">
                 <p>Si tienes preguntas sobre tu reservación:</p>
                 <p>• WhatsApp: +52 322 123 4567</p>
-                <p>• Email: reservas@gentedemar.com</p>
+                <p>• Email: info@bookeros.com</p>
                 <p>• Horario: 8:00 AM - 8:00 PM</p>
               </CardContent>
             </Card>

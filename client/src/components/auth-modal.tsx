@@ -66,14 +66,14 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
             Ingresa tus credenciales para acceder al panel de administración
           </DialogDescription>
         </DialogHeader>
-        
+
         <form onSubmit={handleSubmit} className="space-y-4">
           {error && (
             <Alert variant="destructive">
               <AlertDescription>{error}</AlertDescription>
             </Alert>
           )}
-          
+
           <div className="space-y-2">
             <Label htmlFor="username">Usuario</Label>
             <div className="relative">
@@ -89,7 +89,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
               />
             </div>
           </div>
-          
+
           <div className="space-y-2">
             <Label htmlFor="password">Contraseña</Label>
             <div className="relative">
@@ -105,7 +105,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
               />
             </div>
           </div>
-          
+
           <div className="flex gap-2 pt-4">
             <Button
               type="button"
@@ -132,11 +132,11 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
             </button>
           </div>
         </form>
-        
+
         <div className="text-sm text-gray-500 border-t pt-4">
-          <p className="font-medium mb-2">Credenciales de prueba:</p>
+          <p className="font-medium mb-2">Credenciales:</p>
           <div className="space-y-1 text-xs">
-            <p><strong>Master:</strong> Dario / gentedemar</p>
+            <p><strong>Master:</strong> Dario / bookeros2026</p>
             <p><strong>Business:</strong> Business / tour2025</p>
             <p><strong>Manager:</strong> Manager / admin</p>
           </div>

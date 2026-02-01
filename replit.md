@@ -1,4 +1,4 @@
-# Gente de Mar - Tours Booking Platform
+# BookerOS - Premium Tour Management System
 
 ## Project Overview
 A comprehensive tours business platform with dual interfaces:
@@ -39,7 +39,7 @@ A comprehensive tours business platform with dual interfaces:
 - Retention configuration for commission rates
 
 ## GitHub Repository
-- **Repositorio**: https://github.com/deBull/gente-de-mar
+- **Repositorio**: https://github.com/deBull/bookeros
 - **Usuario**: deBull
 - **Configurado para**: Deploy directo con Vercel y Railway
 - **Archivos de configuración**: vercel.json, .env.example, DEPLOY.md, README.md
@@ -49,7 +49,7 @@ A comprehensive tours business platform with dual interfaces:
 - **Base de datos recomendada**: Neon.tech (PostgreSQL gratuito)
 - **Variables de entorno**: DATABASE_URL, SESSION_SECRET, NODE_ENV
 - **Comandos de build**: npm run build (cliente + servidor)
-- **Credenciales por defecto**: Master (Dario/gentedemar), Business (Business/tour2025), Manager (Manager/admin)
+- **Credenciales por defecto**: Master (Dario/bookeros2026), Business (Business/tour2025), Manager (Manager/admin)
 
 ## Recent Changes
 - **Jun 15, 2025**: Preparado proyecto completo para GitHub y deployment con Vercel
@@ -101,7 +101,7 @@ A comprehensive tours business platform with dual interfaces:
 - **Jun 15, 2025**: Implemented automatic scroll-to-top functionality for all dashboard navigation links - provides smooth user experience when switching pages
 - **Jun 15, 2025**: Enhanced mobile navigation UX with consistent scroll behavior across all dashboard sections
 - **Jun 15, 2025**: Implemented complete authentication system with PostgreSQL database
-- **Jun 15, 2025**: Added three user roles: Master Admin (Dario/gentedemar), Business (Business/tour2025), Manager (Manager/admin)
+- **Jun 15, 2025**: Added three user roles: Master Admin (Dario/bookeros2026), Business (Business/tour2025), Manager (Manager/admin)
 - **Jun 15, 2025**: Created role-based access control system with permission management
 - **Jun 15, 2025**: Added animated logo with Framer Motion - appears centered in sidebar when no user logged in, hides when authenticated
 - **Jun 15, 2025**: Created static logo component for dashboard and customer pages with consistent ocean/wave branding

@@ -1,4 +1,4 @@
-# Rutas de Acceso - Gente de Mar
+# Rutas de Acceso - BookerOS
 
 ## URLs Principales del Sistema
 
@@ -62,7 +62,7 @@
 
 ### Dashboard Administrativo
 - **Desktop**: Sidebar fijo a la izquierda
-- **Mobile**: Slide menu activado tocando el logo "GM" (Gente de Mar)
+- **Mobile**: Slide menu activado tocando el logo "GM" (BookerOS)
 - **Responsive**: Layouts adaptativos para tablets y móviles
 
 ### Plataforma de Clientes
@@ -101,7 +101,7 @@ https://gentedelmar.com/ticket/123           # Ver ticket confirmado
 ## Navegación Rápida
 
 ### Desde Dashboard
-- Click en logo "Gente de Mar" → Slide menu (mobile)
+- Click en logo "BookerOS" → Slide menu (mobile)
 - Sidebar izquierdo siempre visible (desktop)
 - Avatar usuario → Configuraciones de perfil
 

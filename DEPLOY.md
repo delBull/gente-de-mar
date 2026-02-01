@@ -1,21 +1,21 @@
-# Guía de Deploy - Gente de Mar
+# Guía de Deploy - BookerOS
 
 ## 🚀 Deploy Rápido con Vercel
 
 ### 1. Preparar Base de Datos (Recomendado: Neon)
 
 1. Ve a [Neon.tech](https://neon.tech) y crea una cuenta
-2. Crea un nuevo proyecto llamado "gente-de-mar" 
+2. Crea un nuevo proyecto llamado "bookeros" 
 3. Copia la connection string que aparece así:
    ```
-   postgresql://usuario:password@ep-xxx.us-east-1.aws.neon.tech/gente_de_mar?sslmode=require
+   postgresql://usuario:password@ep-xxx.us-east-1.aws.neon.tech/bookeros?sslmode=require
    ```
 
 ### 2. Deploy en Vercel desde GitHub
 
 1. Ve a [vercel.com](https://vercel.com) y conecta tu GitHub
 2. Haz clic en "New Project"
-3. Selecciona tu repositorio `gente-de-mar`
+3. Selecciona tu repositorio `bookeros`
 4. En la configuración:
    - **Framework Preset**: Other
    - **Root Directory**: ./
@@ -69,8 +69,8 @@ NODE_ENV = production
 ### 1. Clonar Repositorio
 
 ```bash
-git clone https://github.com/deBull/gente-de-mar.git
-cd gente-de-mar
+git clone https://github.com/deBull/bookeros.git
+cd bookeros
 ```
 
 ### 2. Instalar Dependencias
@@ -88,9 +88,9 @@ sudo apt install postgresql postgresql-contrib
 
 # Crear usuario y base de datos
 sudo -u postgres psql
-CREATE USER gente_de_mar WITH PASSWORD 'tu_password';
-CREATE DATABASE gente_de_mar OWNER gente_de_mar;
-GRANT ALL PRIVILEGES ON DATABASE gente_de_mar TO gente_de_mar;
+CREATE USER bookeros WITH PASSWORD 'tu_password';
+CREATE DATABASE bookeros OWNER bookeros;
+GRANT ALL PRIVILEGES ON DATABASE bookeros TO bookeros;
 \q
 ```
 
@@ -100,20 +100,20 @@ brew install postgresql
 brew services start postgresql
 
 # Crear base de datos
-createdb gente_de_mar
+createdb bookeros
 ```
 
 #### Windows:
 1. Descargar PostgreSQL desde [postgresql.org](https://www.postgresql.org/download/windows/)
 2. Instalar siguiendo el wizard
-3. Usar pgAdmin para crear la base de datos `gente_de_mar`
+3. Usar pgAdmin para crear la base de datos `bookeros`
 
 ### 4. Variables de Entorno Local
 
 Crear archivo `.env`:
 
 ```env
-DATABASE_URL="postgresql://gente_de_mar:tu_password@localhost:5432/gente_de_mar"
+DATABASE_URL="postgresql://bookeros:tu_password@localhost:5432/bookeros"
 SESSION_SECRET="clave_super_secreta_de_al_menos_32_caracteres"
 NODE_ENV=development
 PORT=5000
@@ -142,7 +142,7 @@ Abre http://localhost:5000
 ## 🔑 Credenciales de Acceso
 
 ### Dashboard Admin
-- **Master**: Dario / gentedemar
+- **Master**: Dario / bookeros2026
 - **Business**: Business / tour2025  
 - **Manager**: Manager / admin
 
@@ -184,7 +184,7 @@ sudo systemctl restart postgresql
 ```bash
 # Dar permisos al usuario
 sudo -u postgres psql
-GRANT ALL PRIVILEGES ON DATABASE gente_de_mar TO gente_de_mar;
+GRANT ALL PRIVILEGES ON DATABASE bookeros TO bookeros;
 ```
 
 ### Error de Puerto

@@ -59,10 +59,10 @@ export default function Login() {
           <div className="flex justify-center">
             <StaticLogo size="lg" showText={false} />
           </div>
-          <CardTitle className="text-2xl font-bold text-foreground">
-            Gente de Mar
+          <CardTitle className="text-3xl font-black text-foreground tracking-tighter italic">
+            BookerOS
           </CardTitle>
-          <p className="text-muted-foreground">Panel de Administración</p>
+          <p className="text-muted-foreground">Operating System for Tours</p>
         </CardHeader>
 
         <CardContent>
@@ -122,9 +122,9 @@ export default function Login() {
           </form>
 
           <div className="mt-6 text-center text-sm text-muted-foreground space-y-1">
-            <p>Credenciales de prueba:</p>
+            <p>Credenciales:</p>
             <div className="text-xs space-y-1">
-              <p><strong>Master:</strong> Dario / gentedemar</p>
+              <p><strong>Master:</strong> Dario / bookeros2026</p>
               <p><strong>Business:</strong> Business / tour2025</p>
               <p><strong>Manager:</strong> Manager / admin</p>
             </div>

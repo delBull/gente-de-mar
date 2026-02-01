@@ -149,10 +149,10 @@ export default function DigitalTicket({ booking }: TicketProps) {
   const addToAppleWallet = () => {
     const passData = {
       formatVersion: 1,
-      passTypeIdentifier: "pass.com.gentedemar.ticket",
+      passTypeIdentifier: "pass.com.bookeros.ticket",
       serialNumber: booking.alphanumericCode,
-      teamIdentifier: "GENTEDEMAR",
-      organizationName: "Gente de Mar",
+      teamIdentifier: "BOOKEROS",
+      organizationName: "BookerOS",
       description: booking.tour?.name || "Tour Ticket",
       backgroundColor: "rgb(0, 123, 191)",
       foregroundColor: "rgb(255, 255, 255)",
@@ -214,25 +214,25 @@ export default function DigitalTicket({ booking }: TicketProps) {
 
   const addToGoogleWallet = () => {
     const googlePassData = {
-      iss: "gentedemar@tickets.com",
+      iss: "bookeros@tickets.com",
       aud: "google",
       typ: "savetowallet",
       payload: {
         genericObjects: [
           {
             id: `${booking.id}-${booking.alphanumericCode}`,
-            classId: "3388000000022125855.gente_de_mar_ticket",
+            classId: "3388000000022125855.bookeros_ticket",
             genericType: "GENERIC_TYPE_UNSPECIFIED",
-            hexBackgroundColor: "#007bbf",
+            hexBackgroundColor: "#2563eb",
             logo: {
               sourceUri: {
-                uri: "https://storage.googleapis.com/wallet-lab-tools-codelab-artifacts-public/pass_google_logo.jpg"
+                uri: "https://bookeros.com/logo.png"
               }
             },
             cardTitle: {
               defaultValue: {
                 language: "es-MX",
-                value: "Gente de Mar"
+                value: "BookerOS"
               }
             },
             subheader: {
@@ -326,11 +326,11 @@ export default function DigitalTicket({ booking }: TicketProps) {
         <DialogHeader>
           <DialogTitle className="text-center">Ticket Digital</DialogTitle>
         </DialogHeader>
-        
+
         <div className="space-y-4">
           {/* Status Badge */}
           <div className="flex justify-center">
-            <Badge 
+            <Badge
               variant={booking.status === 'confirmed' ? 'default' : 'destructive'}
               className={booking.status === 'confirmed' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}
             >
@@ -350,14 +350,14 @@ export default function DigitalTicket({ booking }: TicketProps) {
 
           {/* QR Code */}
           <div className="flex justify-center">
-            <div 
+            <div
               className="w-48 h-48 bg-gray-100 rounded-lg flex items-center justify-center cursor-pointer border-2 border-dashed border-gray-300 hover:border-blue-400 transition-colors"
               onClick={generateQRCode}
             >
               {qrCodeDataUrl ? (
-                <img 
-                  src={qrCodeDataUrl} 
-                  alt="Código QR del ticket" 
+                <img
+                  src={qrCodeDataUrl}
+                  alt="Código QR del ticket"
                   className="w-full h-full object-contain rounded-lg"
                 />
               ) : (

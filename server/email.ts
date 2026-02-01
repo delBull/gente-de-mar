@@ -13,12 +13,12 @@ export async function sendBookingConfirmationEmail(booking: Booking, tour: Tour)
 
     try {
         const { data, error } = await resend.emails.send({
-            from: "gente-de-mar@resend.dev", // Needs domain verification for custom
+            from: "BookerOS <noreply@bookeros.com>",
             to: booking.customerEmail,
-            subject: `Reserva confirmada: ${tour.name}`,
+            subject: `Reserva confirmada: ${tour.name} | BookerOS`,
             html: `
         <h1>¡Gracias por tu reserva, ${booking.customerName}!</h1>
-        <p>Tu aventura en <strong>${tour.name}</strong> está confirmada.</p>
+        <p>Tu aventura en <strong>${tour.name}</strong> está confirmada a través de <strong>BookerOS</strong>.</p>
         <ul>
           <li><strong>Fecha:</strong> ${booking.bookingDate.toLocaleDateString()}</li>
           <li><strong>Adultos:</strong> ${booking.adults}</li>
