@@ -2,6 +2,8 @@ import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes.js";
 import { setupVite, serveStatic, log } from "./vite.js";
 import * as dotenv from "dotenv";
+import fs from "fs";
+import path from "path";
 dotenv.config();
 
 const app = express();
@@ -49,7 +51,35 @@ app.use((err: any, req: express.Request, res: express.Response, next: express.Ne
 
 // Health check endpoint (always available)
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', environment: process.env.NODE_ENV });
+  res.json({ status: 'ok', environment: process.env.NODE_ENV, vercel: process.env.VERCEL });
+});
+
+// Debug endpoint to inspect filesystem in production
+app.get('/api/debug-fs', (req, res) => {
+  try {
+    const root = process.cwd();
+    const getDirInfo = (dir: string, depth = 0): any => {
+      if (depth > 2) return { name: dir, info: "depth limit" };
+      const items = fs.readdirSync(dir);
+      return items.map(item => {
+        const fullPath = path.join(dir, item);
+        const stats = fs.statSync(fullPath);
+        return {
+          name: item,
+          path: fullPath,
+          isDir: stats.isDirectory(),
+          children: stats.isDirectory() && !item.startsWith('.') ? getDirInfo(fullPath, depth + 1) : undefined
+        };
+      });
+    };
+    res.json({
+      cwd: root,
+      dirname: import.meta.dirname,
+      structure: getDirInfo(root)
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message, stack: err.stack });
+  }
 });
 
 let initializationPromise: Promise<void> | null = null;
@@ -78,8 +108,9 @@ async function initializeApp() {
       } else {
         log("vercel environment detected: listen() disabled");
       }
-      log("initialization complete");
+      log("initialization sequence finished");
     } catch (err) {
+      log(`CRITICAL ERROR during initialization: ${err}`);
       console.error("FATAL ERROR DURING SERVER STARTUP:", err);
       if (!process.env.DATABASE_URL) {
         console.error("MISSING DATABASE_URL environment variable.");
@@ -93,12 +124,13 @@ async function initializeApp() {
 
 // Global middleware to ensure the app is ready before processing requests
 app.use(async (req, res, next) => {
-  if (req.path === '/api/health') return next();
+  if (req.path.startsWith('/api/')) return next();
+
   try {
     await initializeApp();
     next();
   } catch (err) {
-    res.status(500).send("Server initialization failed");
+    res.status(500).send(`Server initialization failed: ${err}`);
   }
 });
 
