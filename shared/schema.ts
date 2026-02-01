@@ -100,6 +100,26 @@ export const bookings = pgTable("bookings", {
   redeemedBy: integer("redeemed_by").references(() => users.id), // Quién lo redimió
   createdAt: timestamp("created_at").defaultNow(),
   reservedUntil: timestamp("reserved_until"), // 15-minute hold
+  stripePaymentIntentId: text("stripe_payment_intent_id"),
+  stripeSessionId: text("stripe_session_id"),
+  paymentStatus: text("payment_status").notNull().default("unpaid"), // unpaid, paid, partially_refunded, refunded
+});
+
+export const payments = pgTable("payments", {
+  id: serial("id").primaryKey(),
+  bookingId: integer("booking_id").references(() => bookings.id).notNull(),
+  stripePaymentIntentId: text("stripe_payment_intent_id").notNull(),
+  stripeCustomerId: text("stripe_customer_id"),
+  amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
+  currency: text("currency").notNull().default("mxn"),
+  status: text("status").notNull(), // succeeded, pending, failed, refunded, disputed
+  paymentMethod: text("payment_method"),
+  mode: text("mode").notNull().default("sandbox"), // sandbox, live
+  verified: boolean("verified").notNull().default(false),
+  refundedAmount: decimal("refunded_amount", { precision: 10, scale: 2 }).notNull().default("0.00"),
+  metadata: text("metadata"), // Stringified JSON
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
 });
 
 export const seatHolds = pgTable("seat_holds", {
@@ -120,6 +140,15 @@ export const ticketRedemptions = pgTable("ticket_redemptions", {
   redemptionMethod: text("redemption_method").notNull(), // 'qr_scan', 'manual_code', 'manual_validation'
   redeemedAt: timestamp("redeemed_at").defaultNow(),
   notes: text("notes"), // Notas adicionales del proceso de redención
+});
+
+export const media = pgTable("media", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  mimeType: text("mime_type").notNull(),
+  content: text("content").notNull(), // Base64 content
+  size: integer("size").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
 });
 
 export const insertUserSchema = createInsertSchema(users).pick({
@@ -191,7 +220,21 @@ export const insertBookingSchema = createInsertSchema(bookings).pick({
   healthConditions: true,
   paymentMethod: true,
   transactionHash: true,
-}).partial({ customerId: true, customerEmail: true, customerPhone: true, specialRequests: true, healthConditions: true, paymentMethod: true, transactionHash: true });
+  stripePaymentIntentId: true,
+  stripeSessionId: true,
+  paymentStatus: true,
+}).partial({
+  customerId: true,
+  customerEmail: true,
+  customerPhone: true,
+  specialRequests: true,
+  healthConditions: true,
+  paymentMethod: true,
+  transactionHash: true,
+  stripePaymentIntentId: true,
+  stripeSessionId: true,
+  paymentStatus: true
+});
 
 export const insertSeatHoldSchema = createInsertSchema(seatHolds).pick({
   tourId: true,
@@ -206,6 +249,27 @@ export const insertTicketRedemptionSchema = createInsertSchema(ticketRedemptions
   redeemedBy: true,
   redemptionMethod: true,
   notes: true,
+});
+
+export const insertPaymentSchema = createInsertSchema(payments).pick({
+  bookingId: true,
+  stripePaymentIntentId: true,
+  stripeCustomerId: true,
+  amount: true,
+  currency: true,
+  status: true,
+  paymentMethod: true,
+  mode: true,
+  verified: true,
+  refundedAmount: true,
+  metadata: true,
+});
+
+export const insertMediaSchema = createInsertSchema(media).pick({
+  name: true,
+  mimeType: true,
+  content: true,
+  size: true,
 });
 
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -226,3 +290,7 @@ export type InsertSeatHold = z.infer<typeof insertSeatHoldSchema>;
 export type SeatHold = typeof seatHolds.$inferSelect;
 export type InsertTicketRedemption = z.infer<typeof insertTicketRedemptionSchema>;
 export type TicketRedemption = typeof ticketRedemptions.$inferSelect;
+export type InsertPayment = z.infer<typeof insertPaymentSchema>;
+export type Payment = typeof payments.$inferSelect;
+export type InsertMedia = z.infer<typeof insertMediaSchema>;
+export type Media = typeof media.$inferSelect;

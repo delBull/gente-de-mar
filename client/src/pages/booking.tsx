@@ -83,12 +83,29 @@ export default function Booking() {
     }): Promise<any> => {
       return await apiRequest("POST", "/api/bookings", data);
     },
-    onSuccess: (booking) => {
+    onSuccess: async (booking) => {
       toast({
-        title: "¡Reserva exitosa!",
-        description: "Tu ticket ha sido generado correctamente",
+        title: "Reserva iniciada",
+        description: "Redirigiendo al pago seguro...",
       });
-      setLocation(`/ticket/${booking.id}`);
+
+      try {
+        const checkoutResponse = await apiRequest("POST", `/api/bookings/${booking.id}/checkout`);
+        const { url } = await checkoutResponse.json();
+
+        if (url) {
+          window.location.href = url;
+        } else {
+          throw new Error("No se pudo obtener la URL de pago");
+        }
+      } catch (err) {
+        console.error("Checkout redirect error:", err);
+        toast({
+          title: "Error en el pago",
+          description: "No se pudo iniciar el proceso de pago. Contacta a soporte.",
+          variant: "destructive",
+        });
+      }
     },
     onError: () => {
       toast({

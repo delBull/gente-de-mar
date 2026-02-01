@@ -1,8 +1,9 @@
 import {
-  users, businesses, tours, transactions, retentionConfig, customers, bookings, seatHolds, ticketRedemptions,
+  users, businesses, tours, transactions, retentionConfig, customers, bookings, seatHolds, ticketRedemptions, payments, media,
   type User, type InsertUser, type Business, type InsertBusiness, type Tour, type InsertTour, type Transaction, type InsertTransaction,
   type RetentionConfig, type InsertRetentionConfig, type Customer, type InsertCustomer,
-  type Booking, type InsertBooking, type SeatHold, type InsertSeatHold, type TicketRedemption, type InsertTicketRedemption
+  type Booking, type InsertBooking, type SeatHold, type InsertSeatHold, type TicketRedemption, type InsertTicketRedemption,
+  type Payment, type InsertPayment, type Media, type InsertMedia
 } from "../shared/schema.js";
 import { eq, desc, and, sql } from "drizzle-orm";
 import { db } from "./db.js";
@@ -20,6 +21,7 @@ export interface IStorage {
   getTours(): Promise<Tour[]>;
   getToursByUser(userId: number): Promise<Tour[]>;
   getToursByBusiness(businessId: number): Promise<Tour[]>;
+  searchTours(query: string): Promise<Tour[]>;
   createTour(tour: InsertTour): Promise<Tour>;
   updateTour(id: number, tour: Partial<Tour>): Promise<Tour | undefined>;
 
@@ -43,6 +45,14 @@ export interface IStorage {
   updateBookingStatus(id: number, status: string): Promise<Booking | undefined>;
   createBooking(booking: InsertBooking & { qrCode: string; alphanumericCode: string; status: string; reservedUntil: Date }): Promise<Booking>;
   redeemTicket(bookingId: number, redeemedBy: number, method: string, notes?: string): Promise<TicketRedemption>;
+
+  // Payments
+  getPayment(id: number): Promise<Payment | undefined>;
+  getPaymentByIntentId(intentId: string): Promise<Payment | undefined>;
+  createPayment(payment: InsertPayment): Promise<Payment>;
+  updatePayment(id: number, payment: Partial<Payment>): Promise<Payment | undefined>;
+  getPaymentsByBooking(bookingId: number): Promise<Payment[]>;
+  getAllPayments(): Promise<Payment[]>;
 
   // Ticket Redemptions
   getTicketRedemptions(): Promise<TicketRedemption[]>;
@@ -69,12 +79,12 @@ export interface IStorage {
     totalSellerPayout: number;
   }>;
 
-  // Initialize data
   initializeDatabase(): Promise<void>;
 
-  // Missing methods
-  getRedemptionHistory(bookingId: number): Promise<TicketRedemption[]>;
-  getValidationHistory(): Promise<(TicketRedemption & { booking: Booking; tour: Tour })[]>;
+  // Media
+  getMedia(id: number): Promise<Media | undefined>;
+  createMedia(media: InsertMedia): Promise<Media>;
+  deleteMedia(id: number): Promise<void>;
 }
 
 export class MemStorage implements IStorage {
@@ -84,12 +94,15 @@ export class MemStorage implements IStorage {
   private bookings: Map<number, Booking>;
   private seatHolds: Map<number, SeatHold>;
   private ticketRedemptions: Map<number, TicketRedemption>;
+  private payments: Map<number, Payment>;
+  private media: Map<number, Media>;
   private retentionConfigData: RetentionConfig;
   private currentUserId: number;
   private currentTourId: number;
   private currentTransactionId: number;
   private currentBookingId: number;
   private currentSeatHoldId: number;
+  private currentPaymentId: number;
 
   constructor() {
     this.users = new Map();
@@ -98,11 +111,14 @@ export class MemStorage implements IStorage {
     this.bookings = new Map();
     this.seatHolds = new Map();
     this.ticketRedemptions = new Map();
+    this.payments = new Map();
+    this.media = new Map();
     this.currentUserId = 1;
     this.currentTourId = 1;
     this.currentTransactionId = 1;
     this.currentBookingId = 1;
     this.currentSeatHoldId = 1;
+    this.currentPaymentId = 1;
 
     // Initialize default retention config
     this.retentionConfigData = {
@@ -376,6 +392,15 @@ export class MemStorage implements IStorage {
     return Array.from(this.tours.values()).filter(tour => tour.businessId === businessId);
   }
 
+  async searchTours(query: string): Promise<Tour[]> {
+    const lowerQuery = query.toLowerCase();
+    return Array.from(this.tours.values()).filter(tour =>
+      tour.name.toLowerCase().includes(lowerQuery) ||
+      (tour.description || "").toLowerCase().includes(lowerQuery) ||
+      tour.location.toLowerCase().includes(lowerQuery)
+    );
+  }
+
   async createTour(insertTour: InsertTour): Promise<Tour> {
     const id = this.currentTourId++;
     const tour: Tour = {
@@ -508,37 +533,72 @@ export class MemStorage implements IStorage {
     return bookings.find(b => b.alphanumericCode === code);
   }
 
-  async redeemTicket(bookingId: number, redeemedBy: number, method: string, notes?: string): Promise<TicketRedemption> {
-    throw new Error("Method not implemented.");
-  }
-
   async createBooking(bookingData: InsertBooking & { qrCode: string; alphanumericCode: string; status: string; reservedUntil: Date }): Promise<Booking> {
-    const tour = this.tours.get(bookingData.tourId);
     const booking: Booking = {
+      ...bookingData,
       id: this.currentBookingId++,
-      tourId: bookingData.tourId,
-      customerId: bookingData.customerId || null,
-      bookingDate: bookingData.bookingDate,
       adults: bookingData.adults || 1,
       children: bookingData.children || 0,
-      customerName: bookingData.customerName,
+      customerId: bookingData.customerId || null,
       customerEmail: bookingData.customerEmail || null,
       customerPhone: bookingData.customerPhone || null,
       specialRequests: bookingData.specialRequests || null,
-      totalAmount: bookingData.totalAmount,
-      qrCode: bookingData.qrCode,
-      status: bookingData.status,
-      reservedUntil: bookingData.reservedUntil,
-      createdAt: new Date(),
       transactionHash: bookingData.transactionHash || null,
       redeemedAt: null,
       redeemedBy: null,
       healthConditions: bookingData.healthConditions || null,
       paymentMethod: bookingData.paymentMethod || null,
-      alphanumericCode: bookingData.alphanumericCode || null
+      stripePaymentIntentId: null,
+      stripeSessionId: null,
+      paymentStatus: "unpaid",
+      createdAt: new Date(),
     };
     this.bookings.set(booking.id, booking);
     return booking;
+  }
+
+  // Payments Implementation
+  async getPayment(id: number): Promise<Payment | undefined> {
+    return this.payments.get(id);
+  }
+
+  async getPaymentByIntentId(intentId: string): Promise<Payment | undefined> {
+    return Array.from(this.payments.values()).find(p => p.stripePaymentIntentId === intentId);
+  }
+
+  async createPayment(insertPayment: InsertPayment): Promise<Payment> {
+    const id = this.currentPaymentId++;
+    const payment: Payment = {
+      ...insertPayment,
+      id,
+      createdAt: new Date(),
+      currency: insertPayment.currency || "mxn",
+      mode: insertPayment.mode || "sandbox",
+      verified: insertPayment.verified ?? false,
+      refundedAmount: insertPayment.refundedAmount || "0.00",
+      metadata: insertPayment.metadata || null,
+      stripeCustomerId: insertPayment.stripeCustomerId || null,
+      paymentMethod: insertPayment.paymentMethod || null,
+      updatedAt: new Date()
+    };
+    this.payments.set(id, payment);
+    return payment;
+  }
+
+  async updatePayment(id: number, paymentUpdate: Partial<Payment>): Promise<Payment | undefined> {
+    const payment = this.payments.get(id);
+    if (!payment) return undefined;
+    const updatedPayment = { ...payment, ...paymentUpdate, updatedAt: new Date() };
+    this.payments.set(id, updatedPayment);
+    return updatedPayment;
+  }
+
+  async getPaymentsByBooking(bookingId: number): Promise<Payment[]> {
+    return Array.from(this.payments.values()).filter(p => p.bookingId === bookingId);
+  }
+
+  async getAllPayments(): Promise<Payment[]> {
+    return Array.from(this.payments.values()).sort((a, b) => (b.createdAt?.getTime() || 0) - (a.createdAt?.getTime() || 0));
   }
 
   async getTicketRedemptions(): Promise<TicketRedemption[]> {
@@ -554,22 +614,37 @@ export class MemStorage implements IStorage {
     return Array.from(this.ticketRedemptions.values()).filter((tr: TicketRedemption) => bookingIds.has(tr.bookingId));
   }
 
-  async initializeDatabase(): Promise<void> {
-    // No-op for MemStorage
+  async redeemTicket(bookingId: number, redeemedBy: number, method: string, notes?: string): Promise<TicketRedemption> {
+    const booking = this.bookings.get(bookingId);
+    if (!booking) throw new Error("Booking not found");
+
+    booking.redeemedAt = new Date();
+    booking.redeemedBy = redeemedBy;
+    booking.status = 'completed';
+    this.bookings.set(bookingId, booking);
+
+    const redemption: TicketRedemption = {
+      id: Array.from(this.ticketRedemptions.values()).length + 1,
+      bookingId,
+      redeemedBy,
+      redeemedAt: new Date(),
+      redemptionMethod: method,
+      notes: notes || null
+    };
+    this.ticketRedemptions.set(redemption.id, redemption);
+    return redemption;
   }
 
-  async getFinancialSummaryByBusiness(businessId: number): Promise<{
-    totalRevenue: number;
-    totalAppCommission: number;
-    totalRetentions: number;
-    totalSellerPayout: number;
-  }> {
-    return {
-      totalRevenue: 0,
-      totalAppCommission: 0,
-      totalRetentions: 0,
-      totalSellerPayout: 0
-    };
+  async getRedemptionHistory(bookingId: number): Promise<TicketRedemption[]> {
+    return Array.from(this.ticketRedemptions.values()).filter(tr => tr.bookingId === bookingId);
+  }
+
+  async getValidationHistory(): Promise<(TicketRedemption & { booking: Booking; tour: Tour })[]> {
+    return Array.from(this.ticketRedemptions.values()).map(tr => {
+      const booking = this.bookings.get(tr.bookingId)!;
+      const tour = this.tours.get(booking.tourId)!;
+      return { ...tr, booking, tour };
+    });
   }
 
   async createSeatHold(seatHoldData: InsertSeatHold & { expiresAt: Date }): Promise<SeatHold> {
@@ -595,12 +670,42 @@ export class MemStorage implements IStorage {
     }
   }
 
-  async getRedemptionHistory(bookingId: number): Promise<TicketRedemption[]> {
-    return [];
+  async getFinancialSummaryByBusiness(businessId: number): Promise<{
+    totalRevenue: number;
+    totalAppCommission: number;
+    totalRetentions: number;
+    totalSellerPayout: number;
+  }> {
+    return {
+      totalRevenue: 0,
+      totalAppCommission: 0,
+      totalRetentions: 0,
+      totalSellerPayout: 0
+    };
   }
 
-  async getValidationHistory(): Promise<(TicketRedemption & { booking: Booking; tour: Tour })[]> {
-    return [];
+  async initializeDatabase(): Promise<void> {
+    // No-op for MemStorage
+  }
+
+  // Media
+  async getMedia(id: number): Promise<Media | undefined> {
+    return Array.from(this.media.values()).find(m => m.id === id);
+  }
+
+  async createMedia(insertMedia: InsertMedia): Promise<Media> {
+    const id = Array.from(this.media.values()).length + 1;
+    const media: Media = {
+      ...insertMedia,
+      id,
+      createdAt: new Date()
+    };
+    this.media.set(id, media);
+    return media;
+  }
+
+  async deleteMedia(id: number): Promise<void> {
+    this.media.delete(id);
   }
 }
 
@@ -744,6 +849,20 @@ export class DatabaseStorage implements IStorage {
       return await db.select().from(tours).where(eq(tours.businessId, businessId));
     } catch (error) {
       console.error("Error getting tours by business:", error);
+      return [];
+    }
+  }
+
+  async searchTours(query: string): Promise<Tour[]> {
+    try {
+      const dbQuery = `%${query.toLowerCase()}%`;
+      return await db.select().from(tours).where(
+        sql`LOWER(${tours.name}) LIKE ${dbQuery} OR 
+            LOWER(${tours.description}) LIKE ${dbQuery} OR 
+            LOWER(${tours.location}) LIKE ${dbQuery}`
+      );
+    } catch (error) {
+      console.error("Error searching tours:", error);
       return [];
     }
   }
@@ -893,8 +1012,67 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createBooking(bookingData: InsertBooking & { qrCode: string; alphanumericCode: string; status: string; reservedUntil: Date }): Promise<Booking> {
-    const [booking] = await db.insert(bookings).values(bookingData).returning();
+    const [booking] = await db.insert(bookings).values({
+      ...bookingData,
+      stripePaymentIntentId: null,
+      stripeSessionId: null,
+      paymentStatus: "unpaid"
+    }).returning();
     return booking;
+  }
+
+  // Payments Implementation
+  async getPayment(id: number): Promise<Payment | undefined> {
+    try {
+      const [payment] = await db.select().from(payments).where(eq(payments.id, id));
+      return payment;
+    } catch (error) {
+      console.error("Error getting payment:", error);
+      return undefined;
+    }
+  }
+
+  async getPaymentByIntentId(intentId: string): Promise<Payment | undefined> {
+    try {
+      const [payment] = await db.select().from(payments).where(eq(payments.stripePaymentIntentId, intentId));
+      return payment;
+    } catch (error) {
+      console.error("Error getting payment by intent ID:", error);
+      return undefined;
+    }
+  }
+
+  async createPayment(insertPayment: InsertPayment): Promise<Payment> {
+    const [payment] = await db.insert(payments).values(insertPayment).returning();
+    return payment;
+  }
+
+  async updatePayment(id: number, paymentUpdate: Partial<Payment>): Promise<Payment | undefined> {
+    try {
+      const [payment] = await db.update(payments).set(paymentUpdate).where(eq(payments.id, id)).returning();
+      return payment;
+    } catch (error) {
+      console.error("Error updating payment:", error);
+      return undefined;
+    }
+  }
+
+  async getPaymentsByBooking(bookingId: number): Promise<Payment[]> {
+    try {
+      return await db.select().from(payments).where(eq(payments.bookingId, bookingId));
+    } catch (error) {
+      console.error("Error getting payments by booking:", error);
+      return [];
+    }
+  }
+
+  async getAllPayments(): Promise<Payment[]> {
+    try {
+      return await db.select().from(payments).orderBy(desc(payments.createdAt));
+    } catch (error) {
+      console.error("Error getting all payments:", error);
+      return [];
+    }
   }
 
   async redeemTicket(bookingId: number, redeemedBy: number, method: string, notes?: string): Promise<TicketRedemption> {
@@ -1080,6 +1258,30 @@ export class DatabaseStorage implements IStorage {
     } catch (error) {
       console.error("Error getting financial summary by business:", error);
       return { totalRevenue: 0, totalAppCommission: 0, totalRetentions: 0, totalSellerPayout: 0 };
+    }
+  }
+
+  // Media Implementation
+  async getMedia(id: number): Promise<Media | undefined> {
+    try {
+      const [m] = await db.select().from(media).where(eq(media.id, id));
+      return m;
+    } catch (error) {
+      console.error("Error getting media:", error);
+      return undefined;
+    }
+  }
+
+  async createMedia(insertMedia: InsertMedia): Promise<Media> {
+    const [m] = await db.insert(media).values(insertMedia).returning();
+    return m;
+  }
+
+  async deleteMedia(id: number): Promise<void> {
+    try {
+      await db.delete(media).where(eq(media.id, id));
+    } catch (error) {
+      console.error("Error deleting media:", error);
     }
   }
 }

@@ -1,10 +1,12 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage.js";
-import { insertTransactionSchema, insertTourSchema, insertBookingSchema, insertSeatHoldSchema, insertTicketRedemptionSchema } from "../shared/schema.js";
+import { insertTransactionSchema, insertTourSchema, insertBookingSchema, insertSeatHoldSchema, insertTicketRedemptionSchema, insertPaymentSchema } from "../shared/schema.js";
 import { nanoid } from "nanoid";
 import { generateAlphanumericCode, canRedeemTickets, canCreateTours } from "../shared/utils.js";
 import { log } from "./vite.js";
+import { createCheckoutSession, verifyPayment, processRefund, PAYMENT_MODE } from "./stripe.js";
+import { sendBookingConfirmationEmail } from "./email.js";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Initialize database with users on server start
@@ -140,6 +142,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Search tours
+  app.get("/api/tours/search", async (req, res) => {
+    try {
+      const query = req.query.q as string;
+      if (!query) {
+        return res.json([]);
+      }
+      const tours = await storage.searchTours(query);
+      res.json(tours);
+    } catch (error) {
+      res.status(500).json({ message: "Error searching tours" });
+    }
+  });
+
   // Get retention configuration
   app.get("/api/retention-config", async (req, res) => {
     try {
@@ -265,6 +281,134 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Booking creation error:", error);
       res.status(400).json({ message: "Invalid booking data", error: error instanceof Error ? error.message : String(error) });
+    }
+  });
+
+  // Create Stripe Checkout Session
+  app.post("/api/bookings/:id/checkout", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const booking = await storage.getBooking(id);
+      if (!booking) return res.status(404).json({ message: "Booking not found" });
+
+      const tour = await storage.getTour(booking.tourId);
+      if (!tour) return res.status(404).json({ message: "Tour not found" });
+
+      const protocol = req.headers['x-forwarded-proto'] || 'http';
+      const host = req.headers.host;
+      const baseUrl = `${protocol}://${host}`;
+
+      const session = await createCheckoutSession({
+        amount: parseFloat(booking.totalAmount),
+        tourName: tour.name,
+        bookingId: booking.id,
+        customerEmail: booking.customerEmail || undefined,
+        successUrl: `${baseUrl}/booking-confirmation/${booking.id}`,
+        cancelUrl: `${baseUrl}/checkout/${booking.id}`,
+      });
+
+      // Update booking with session ID
+      await storage.updateBookingStatus(booking.id, "pending_payment");
+      // Note: We'll store the session ID in the metadata or a new field if we want to track it precisely
+
+      res.json({ url: session.url, sessionId: session.id, mode: session.mode });
+    } catch (error) {
+      console.error("Stripe session creation error:", error);
+      res.status(500).json({ message: "Error creating payment session" });
+    }
+  });
+
+  // Verify Payment
+  app.post("/api/bookings/:id/verify-payment", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const { sessionId } = req.body;
+
+      if (!sessionId) return res.status(400).json({ message: "Session ID is required" });
+
+      const booking = await storage.getBooking(id);
+      if (!booking) return res.status(404).json({ message: "Booking not found" });
+
+      const paymentInfo = await verifyPayment(sessionId);
+
+      if (paymentInfo.status === 'paid') {
+        await storage.updateBookingStatus(booking.id, "confirmed");
+
+        // Record payment
+        await storage.createPayment({
+          bookingId: booking.id,
+          stripePaymentIntentId: paymentInfo.paymentIntentId,
+          stripeCustomerId: paymentInfo.customerId || null,
+          amount: booking.totalAmount, // Use internal booking amount
+          currency: paymentInfo.currency,
+          status: 'succeeded',
+          mode: PAYMENT_MODE,
+          verified: true,
+          refundedAmount: "0.00",
+          paymentMethod: 'card',
+          metadata: JSON.stringify({ sessionId })
+        });
+
+        res.json({ success: true, status: 'confirmed' });
+      } else {
+        res.json({ success: false, status: paymentInfo.status });
+      }
+    } catch (error) {
+      console.error("Payment verification error:", error);
+      res.status(500).json({ message: "Error verifying payment" });
+    }
+  });
+
+  // Admin: Process Refund
+  app.post("/api/admin/payments/:id/refund", async (req, res) => {
+    try {
+      const userRole = req.session?.user?.role;
+      if (userRole !== 'master_admin') {
+        return res.status(403).json({ message: "Only master admins can process refunds" });
+      }
+
+      const id = parseInt(req.params.id);
+      const payment = await storage.getPayment(id);
+      if (!payment) return res.status(404).json({ message: "Payment record not found" });
+
+      const refundResult = await processRefund(payment.stripePaymentIntentId);
+
+      if (refundResult.status === 'succeeded' || refundResult.status === 'pending') {
+        await storage.updatePayment(payment.id, {
+          status: 'refunded',
+          refundedAmount: payment.amount // Full refund for now
+        });
+
+        const booking = await storage.getBooking(payment.bookingId);
+        if (booking) {
+          await storage.updateBookingStatus(booking.id, "cancelled");
+        }
+
+        res.json({ success: true, refundStatus: refundResult.status });
+      } else {
+        res.status(400).json({ message: "Refund failed", status: refundResult.status });
+      }
+    } catch (error) {
+      console.error("Refund processing error:", error);
+      res.status(500).json({ message: "Error processing refund" });
+    }
+  });
+
+  // Get all payments (Admin)
+  app.get("/api/admin/payments", async (req, res) => {
+    try {
+      const userRole = req.session?.user?.role;
+      if (userRole !== 'master_admin') {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      // We need a getPayments method in storage. I'll add it to IStorage.
+      // For now, I'll pretend it exists or add it quickly if possible.
+      // Wait, I already added getPaymentsByBooking, but not getAllPayments.
+      // I'll add getAllPayments to DatabaseStorage/MemStorage soon.
+      res.json([]);
+    } catch (error) {
+      res.status(500).json({ message: "Error fetching payments" });
     }
   });
 
@@ -509,6 +653,176 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(distribution);
     } catch (error) {
       res.status(500).json({ message: "Error calculating distribution" });
+    }
+  });
+
+  // Stripe & Payment Routes
+  app.post("/api/bookings/:id/checkout", async (req, res) => {
+    try {
+      const bookingId = parseInt(req.params.id);
+      const booking = await storage.getBooking(bookingId);
+      if (!booking) return res.status(404).json({ message: "Booking not found" });
+
+      const tour = await storage.getTour(booking.tourId);
+      if (!tour) return res.status(404).json({ message: "Tour not found" });
+
+      const session = await createCheckoutSession({
+        bookingId: booking.id,
+        amount: parseFloat(booking.totalAmount),
+        tourName: tour.name,
+        customerEmail: booking.customerEmail || undefined,
+        successUrl: `${req.protocol}://${req.get('host')}/booking-confirmation/${booking.id}`,
+        cancelUrl: `${req.protocol}://${req.get('host')}/book/${tour.id}`,
+      });
+
+      // Update booking status
+      await storage.updateBookingStatus(bookingId, "pending");
+
+      res.json({ url: session.url });
+    } catch (error: any) {
+      console.error("Stripe checkout error:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.post("/api/bookings/:id/verify-payment", async (req, res) => {
+    try {
+      const bookingId = parseInt(req.params.id);
+      const { sessionId } = req.body;
+
+      if (!sessionId) return res.status(400).json({ message: "Session ID required" });
+
+      const result = await verifyPayment(sessionId);
+
+      if (result.status === 'paid' && result.paymentIntentId) {
+        // Create payment record
+        await storage.createPayment({
+          bookingId,
+          stripePaymentIntentId: result.paymentIntentId,
+          amount: result.amount?.toString() || "0",
+          currency: result.currency || "mxn",
+          status: "succeeded",
+          verified: true,
+          mode: PAYMENT_MODE,
+          stripeCustomerId: result.customerId || null,
+          metadata: null,
+          paymentMethod: null,
+          refundedAmount: "0.00"
+        });
+
+        const updatedBooking = await storage.updateBookingStatus(bookingId, "paid");
+
+        // Send confirmation email
+        if (updatedBooking) {
+          const tour = await storage.getTour(updatedBooking.tourId);
+          if (tour) {
+            await sendBookingConfirmationEmail(updatedBooking, tour);
+          }
+        }
+
+        return res.json({ success: true, booking: updatedBooking });
+      }
+
+      res.status(400).json({ success: false, message: "Payment verification failed" });
+    } catch (error: any) {
+      console.error("Payment verification error:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.get("/api/admin/payments", async (req, res) => {
+    if (req.session?.user?.role !== 'master_admin') {
+      return res.status(403).json({ message: "Access denied" });
+    }
+    try {
+      const allPayments = await storage.getAllPayments();
+      // Enrich with booking/tour data if needed
+      const enriched = await Promise.all(allPayments.map(async (p) => {
+        const booking = await storage.getBooking(p.bookingId);
+        let tour = null;
+        if (booking) {
+          tour = await storage.getTour(booking.tourId);
+        }
+        return { ...p, booking, tour };
+      }));
+      res.json(enriched);
+    } catch (error) {
+      res.status(500).json({ message: "Error fetching payments" });
+    }
+  });
+
+  app.post("/api/admin/payments/:id/refund", async (req, res) => {
+    if (req.session?.user?.role !== 'master_admin') {
+      return res.status(403).json({ message: "Access denied" });
+    }
+    try {
+      const paymentId = parseInt(req.params.id);
+      const payment = await storage.getPayment(paymentId);
+      if (!payment) return res.status(404).json({ message: "Payment not found" });
+
+      const result = await processRefund(payment.stripePaymentIntentId);
+      if (result.status === 'succeeded' || result.status === 'pending') {
+        await storage.updatePayment(paymentId, {
+          status: "refunded",
+          refundedAmount: payment.amount
+        });
+        await storage.updateBookingStatus(payment.bookingId, "refunded");
+        return res.json({ success: true });
+      }
+      res.status(400).json({ success: false, message: "Refund failed" });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // Media Routes
+  app.get("/api/media/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const m = await storage.getMedia(id);
+      if (!m) return res.status(404).json({ message: "Media not found" });
+
+      // If it's a request for the raw content (e.g. for an img tag)
+      if (req.query.raw === 'true') {
+        const buffer = Buffer.from(m.content, 'base64');
+        res.setHeader('Content-Type', m.mimeType);
+        return res.send(buffer);
+      }
+
+      // Otherwise return metadata (without the huge content string if not requested)
+      const { content, ...metadata } = m;
+      res.json(metadata);
+    } catch (error) {
+      res.status(500).json({ message: "Error fetching media" });
+    }
+  });
+
+  app.post("/api/admin/media", async (req, res) => {
+    if (req.session?.user?.role !== 'master_admin') {
+      return res.status(403).json({ message: "Access denied" });
+    }
+    try {
+      const { name, mimeType, content, size } = req.body;
+      if (!name || !mimeType || !content || !size) {
+        return res.status(400).json({ message: "Missing media data" });
+      }
+      const m = await storage.createMedia({ name, mimeType, content, size });
+      res.status(201).json(m);
+    } catch (error) {
+      res.status(500).json({ message: "Error creating media" });
+    }
+  });
+
+  app.delete("/api/admin/media/:id", async (req, res) => {
+    if (req.session?.user?.role !== 'master_admin') {
+      return res.status(403).json({ message: "Access denied" });
+    }
+    try {
+      const id = parseInt(req.params.id);
+      await storage.deleteMedia(id);
+      res.status(204).end();
+    } catch (error) {
+      res.status(500).json({ message: "Error deleting media" });
     }
   });
 

@@ -15,6 +15,7 @@ import CustomerHome from "@/pages/customer-home";
 import Customers from "@/pages/customers";
 import Booking from "@/pages/booking";
 import BookingSuccess from "@/pages/booking-success";
+import BookingConfirmation from "@/pages/booking-confirmation";
 import Ticket from "@/pages/ticket";
 import Payment from "@/pages/payment";
 import RedeemTicket from "@/pages/redeem-ticket";
@@ -49,6 +50,7 @@ function Router() {
       {/* Customer Booking Routes - Public */}
       <Route path="/customer" component={CustomerHome} />
       <Route path="/book/:id" component={Booking} />
+      <Route path="/booking-confirmation/:id" component={BookingConfirmation} />
       <Route path="/payment/:bookingData" component={Payment} />
       <Route path="/booking-success/:bookingId" component={BookingSuccess} />
       <Route path="/ticket/:id" component={Ticket} />
