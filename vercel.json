@@ -7,7 +7,7 @@
       "config": {
         "maxDuration": 10,
         "includeFiles": [
-          "dist/public/**"
+          "../dist/public/**"
         ]
       }
     }

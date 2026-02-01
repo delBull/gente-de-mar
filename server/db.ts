@@ -1,8 +1,9 @@
 import dotenv from "dotenv";
 dotenv.config();  // ← ¡Carga .env antes que nada!
 
-import { Pool, neonConfig } from '@neondatabase/serverless';
-import { drizzle } from 'drizzle-orm/neon-serverless';
+import { Pool, neonConfig, neon } from '@neondatabase/serverless';
+import { drizzle } from 'drizzle-orm/neon-http';
+import { drizzle as drizzlePool } from 'drizzle-orm/neon-serverless';
 import ws from "ws";
 import * as schema from "../shared/schema.js";
 
@@ -12,5 +13,8 @@ if (!process.env.DATABASE_URL) {
   throw new Error("DATABASE_URL must be set");
 }
 
-const pool = new Pool({ connectionString: process.env.DATABASE_URL });
-export const db = drizzle({ client: pool, schema });
+// In serverless environments like Vercel, the fetch-based neon client 
+// is often more stable than WebSockets for short-lived requests.
+export const db = process.env.VERCEL === "1"
+  ? drizzle(neon(process.env.DATABASE_URL), { schema })
+  : drizzlePool(new Pool({ connectionString: process.env.DATABASE_URL }), { schema });
