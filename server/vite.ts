@@ -73,6 +73,9 @@ export function serveStatic(app: Express) {
     path.resolve(process.cwd(), "public"),
     path.resolve(import.meta.dirname, "..", "dist", "public"),
     path.resolve(import.meta.dirname, "..", "public"),
+    // Vercel output sometimes places things in unusual places
+    path.resolve(process.cwd(), "..", "dist", "public"),
+    path.resolve(process.cwd(), "..", "public"),
   ];
 
   let distPath = "";
@@ -86,10 +89,20 @@ export function serveStatic(app: Express) {
   if (!distPath) {
     log(`WARNING: Static directory not found. Checked: ${possiblePaths.join(", ")}`);
     try {
-      const files = fs.readdirSync(process.cwd());
-      log(`Contents of process.cwd() (${process.cwd()}): ${files.join(", ")}`);
+      const listDir = (dir: string, depth = 0) => {
+        if (depth > 2) return;
+        const files = fs.readdirSync(dir);
+        log(`${" ".repeat(depth * 2)}Contents of ${dir}: ${files.join(", ")}`);
+        for (const file of files) {
+          const fullPath = path.join(dir, file);
+          if (fs.statSync(fullPath).isDirectory() && !file.startsWith('.')) {
+            listDir(fullPath, depth + 1);
+          }
+        }
+      };
+      listDir(process.cwd());
     } catch (e) {
-      log(`Could not read process.cwd(): ${e}`);
+      log(`Could not introspect file system: ${e}`);
     }
     return;
   }
