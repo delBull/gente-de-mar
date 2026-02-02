@@ -110,9 +110,16 @@ export function serveStatic(app: Express) {
   log(`serving static files from: ${distPath}`);
   app.use(express.static(distPath));
 
-  // fall through to index.html if the file doesn't exist
-  app.use("*", (_req, res) => {
+  // fall through to index.html if the file doesn't exist (SPA routing)
+  app.use("*", (req, res) => {
     const indexPath = path.resolve(distPath, "index.html");
+
+    // Si es una ruta de API o parece un archivo estático (tiene extensión), devolvemos 404
+    if (req.path.startsWith('/api/') || req.path.includes('.')) {
+      res.status(404).send("Not Found");
+      return;
+    }
+
     if (fs.existsSync(indexPath)) {
       res.sendFile(indexPath);
     } else {

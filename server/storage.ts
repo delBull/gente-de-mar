@@ -715,6 +715,7 @@ export class DatabaseStorage implements IStorage {
     try {
       // Create default business first
       const [defaultBusiness] = await db.insert(businesses).values({
+        id: 1, // Fix: providing ID to trigger ON CONFLICT on ID
         name: "BookerOS Tours",
         description: "Plataforma Premium de Gestión de Experiencias",
         contactEmail: "info@bookeros.com",
@@ -728,6 +729,8 @@ export class DatabaseStorage implements IStorage {
           contactEmail: "info@bookeros.com"
         }
       }).returning();
+
+      console.log("Default business ensured/updated");
 
       const businessId = defaultBusiness?.id || 1;
 
@@ -775,6 +778,7 @@ export class DatabaseStorage implements IStorage {
           }
         });
       }
+      console.log("Default users ensured/updated");
 
       // Create default retention config
       await db.insert(retentionConfig).values({
