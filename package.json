@@ -60,6 +60,7 @@
     "html2canvas": "^1.4.1",
     "input-otp": "^1.4.2",
     "jspdf": "^3.0.1",
+    "jsqr": "^1.4.0",
     "lucide-react": "^0.453.0",
     "memoizee": "^0.4.17",
     "memorystore": "^1.6.7",
@@ -114,7 +115,7 @@
     "vite": "^6.3.5"
   },
   "optionalDependencies": {
-    "bufferutil": "^4.0.8",
-    "@rollup/rollup-linux-x64-gnu": "4.43.0"
+    "@rollup/rollup-linux-x64-gnu": "4.43.0",
+    "bufferutil": "^4.0.8"
   }
 }

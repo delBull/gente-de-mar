@@ -56,14 +56,7 @@ export default function DigitalTicketPremium({ booking }: TicketProps) {
 
     setIsGeneratingQR(true);
     try {
-      const qrData = JSON.stringify({
-        bookingId: booking.id,
-        qrCode: booking.qrCode,
-        alphanumericCode: booking.alphanumericCode,
-        customerName: booking.customerName,
-        tourName: booking.tour?.name || 'Tour',
-        bookingDate: booking.bookingDate
-      });
+      const qrData = booking.qrCode;
 
       const dataUrl = await QRCodeLib.toDataURL(qrData, {
         width: 256,

@@ -87,11 +87,12 @@ export default function Payment() {
         return;
       }
 
-      // Basic card validation
-      if (cardNumber.replace(/\s/g, '').length < 16) {
+      // Basic card validation (15 digits for AMEX, 16 for others)
+      const digitsOnly = cardNumber.replace(/\s/g, '');
+      if (digitsOnly.length < 15 || digitsOnly.length > 16) {
         toast({
           title: "Tarjeta Inválida",
-          description: "El número de tarjeta debe tener 16 dígitos",
+          description: "El número de tarjeta debe tener entre 15 y 16 dígitos",
           variant: "destructive",
         });
         return;
@@ -106,6 +107,9 @@ export default function Payment() {
         cardNumber: paymentMethod === "card" ? cardNumber : null,
         amount: bookingData.totalAmount
       });
+    } catch (err: any) {
+      console.error("Payment error:", err);
+      // The onError in mutation will handle toast, but we can log more details if needed
     } finally {
       setIsProcessing(false);
     }
