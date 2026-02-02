@@ -136,43 +136,43 @@ export class MemStorage implements IStorage {
     // Create default users with different roles
     const masterAdmin: User = {
       id: 1,
-      username: "admin",
-      password: "admin123",
-      email: "admin@bookeros.com",
-      fullName: "Administrador Master",
+      username: "Dario",
+      password: "bookeros2026",
+      email: "dario@bookeros.com",
+      fullName: "Dario - BookerOS Admin",
       role: "master_admin",
       isActive: true,
       createdAt: new Date(),
       businessId: null,
-      permissions: null,
+      permissions: ["all"],
       lastLogin: null
     };
 
     const businessUser: User = {
       id: 2,
-      username: "dario",
-      password: "password",
-      email: "dario@bookeros.com",
-      fullName: "Darío",
+      username: "Business",
+      password: "tour2025",
+      email: "business@bookeros.com",
+      fullName: "Business User",
       role: "business",
       isActive: true,
       createdAt: new Date(),
       businessId: 1,
-      permissions: null,
+      permissions: ["business_admin", "view_business_metrics", "manage_tours", "view_payments"],
       lastLogin: null
     };
 
     const managerUser: User = {
       id: 3,
-      username: "manager",
-      password: "manager123",
+      username: "Manager",
+      password: "admin",
       email: "manager@bookeros.com",
-      fullName: "Manager de Tours",
+      fullName: "Manager User",
       role: "manager",
       isActive: true,
       createdAt: new Date(),
       businessId: 1,
-      permissions: ["tours", "reservations"],
+      permissions: ["manage_tours", "view_bookings", "view_reports"],
       lastLogin: null
     };
 
@@ -720,7 +720,14 @@ export class DatabaseStorage implements IStorage {
         contactEmail: "info@bookeros.com",
         contactPhone: "+52 322 123 4567",
         address: "Puerto Vallarta, Jalisco"
-      }).onConflictDoNothing().returning();
+      }).onConflictDoUpdate({
+        target: businesses.id,
+        set: {
+          name: "BookerOS Tours",
+          description: "Plataforma Premium de Gestión de Experiencias",
+          contactEmail: "info@bookeros.com"
+        }
+      }).returning();
 
       const businessId = defaultBusiness?.id || 1;
 
@@ -756,7 +763,17 @@ export class DatabaseStorage implements IStorage {
       ];
 
       for (const userData of usersToCreate) {
-        await db.insert(users).values(userData).onConflictDoNothing();
+        await db.insert(users).values(userData).onConflictDoUpdate({
+          target: users.username,
+          set: {
+            password: userData.password,
+            email: userData.email,
+            fullName: userData.fullName,
+            role: userData.role,
+            permissions: userData.permissions,
+            businessId: userData.businessId
+          }
+        });
       }
 
       // Create default retention config

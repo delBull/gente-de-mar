@@ -98,16 +98,16 @@ export function useAuth() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username, password }),
       });
-      
+
       if (!response.ok) {
         throw new Error("Credenciales inválidas");
       }
-      
+
       const userData = await response.json();
       setUser(userData.user || userData);
       setIsAuthenticated(true);
       localStorage.setItem("auth_user", JSON.stringify(userData.user || userData));
-      
+
       // Forzar recarga de la página para actualizar el estado
       window.location.href = "/dashboard";
       return userData.user || userData;
@@ -146,70 +146,72 @@ export function useAuth() {
       setUser(null);
       setIsAuthenticated(false);
       localStorage.removeItem("auth_user");
-      
+
       // Forzar recarga de página para limpiar estado
       window.location.reload();
     }
   };
 
-const isMasterAdmin = (user: User) => user.role === 'master_admin';
-const isBusiness = (user: User) => user.role === 'business';
-const isManager = (user: User) => user.role === 'manager';
+  const isMasterAdmin = (user: User) => user.role === 'master_admin';
+  const isBusiness = (user: User) => user.role === 'business';
+  const isManager = (user: User) => user.role === 'manager';
 
-const canManageBookings = (user: User) => {
+  const canManageBookings = (user: User) => {
     return isMasterAdmin(user) || isBusiness(user);
-};
+  };
 
-const isAdmin = (user: User) => {
+  const isAdmin = (user: User) => {
     return isMasterAdmin(user);
-};
+  };
 
-const hasPermission = (permission: string) => {
+  const hasPermission = (permission: string) => {
     if (!user) return false;
     if (user.role === 'master_admin') return true;
     return user.permissions?.includes(permission) || false;
   };
 
-const canAccessFinancials = (): boolean => {
-  if (!user) return false;
-  return user.role === 'master_admin' || user.role === 'business';
-};
+  const canAccessFinancials = (): boolean => {
+    if (!user) return false;
+    return user.role === 'master_admin' || user.role === 'business';
+  };
 
-const canManageUsers = (): boolean => {
-  if (!user) return false;
-  return user.role === 'master_admin' || user.role === 'business';
-};
+  const canManageUsers = (): boolean => {
+    if (!user) return false;
+    return user.role === 'master_admin' || user.role === 'business';
+  };
 
-const canAccessSection = (section: string): boolean => {
-  if (!isAuthenticated || !user) return false;
-  
-  const role: UserRole = user.role;
-  
-  // Master Admin puede acceder a todo
-  if (role === 'master_admin') return true;
-  
-  switch (section) {
-    case 'dashboard':
-      return role === 'business';
-    case 'tours':
-      return true; // Todos los usuarios autenticados pueden ver tours
-    case 'reservations':
-      return true; // Todos los usuarios autenticados pueden ver reservas
-    case 'payments':
-      // Solo Master Admin y Business pueden ver pagos (manager NO)
-      return role === 'business';
-    case 'reports':
-      return true; // Todos pueden ver reportes
-    case 'customers':
-      return true; // Todos pueden ver clientes
-    case 'settings':
-      return false; // Solo Master Admin puede cambiar configuraciones (ya manejado arriba)
-    case 'redeem':
-      return true; // Todos los usuarios autenticados pueden canjear tickets
-    default:
-      return false;
-  }
-};
+  const canAccessSection = (section: string): boolean => {
+    if (!isAuthenticated || !user) return false;
+
+    const role: UserRole = user.role;
+
+    // Master Admin puede acceder a todo
+    if (role === 'master_admin') return true;
+
+    switch (section) {
+      case 'dashboard':
+        return role === 'business';
+      case 'tours':
+        return true; // Todos los usuarios autenticados pueden ver tours
+      case 'reservations':
+        return true; // Todos los usuarios autenticados pueden ver reservas
+      case 'payments':
+        // Solo Master Admin y Business pueden ver pagos (manager NO)
+        return role === 'business';
+      case 'reports':
+        return true; // Todos pueden ver reportes
+      case 'customers':
+        return true; // Todos pueden ver clientes
+      case 'customer':
+        return true; // Todos los usuarios autenticados pueden ver el portal de clientes
+      case 'settings':
+        return false; // Solo Master Admin puede cambiar configuraciones (ya manejado arriba)
+      case 'redeem':
+        return true; // Todos los usuarios autenticados pueden canjear tickets
+      default:
+        return false;
+    }
+  };
 
   return {
     user,
