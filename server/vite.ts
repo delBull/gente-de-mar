@@ -73,9 +73,9 @@ export function serveStatic(app: Express) {
     path.resolve(process.cwd(), "public"),
     path.resolve(import.meta.dirname, "..", "dist", "public"),
     path.resolve(import.meta.dirname, "..", "public"),
-    // Vercel output sometimes places things in unusual places
+    // Vercel/Serverless adaptations
+    path.resolve(process.cwd(), ".next/server/pages"), // just in case
     path.resolve(process.cwd(), "..", "dist", "public"),
-    path.resolve(process.cwd(), "..", "public"),
   ];
 
   let distPath = "";
@@ -91,35 +91,39 @@ export function serveStatic(app: Express) {
     log(`ERROR: No static directory found. Deployment might be broken.`);
     log(`Current working directory: ${process.cwd()}`);
     log(`Import.meta.dirname: ${import.meta.dirname}`);
-    return;
+    // Attempt to create a fallback or just return to avoid crash, but serving will fail
+  } else {
+    log(`serving static files from: ${distPath}`);
+    app.use(express.static(distPath, {
+      index: false,
+      maxAge: '1d',
+      immutable: true,
+      fallthrough: true
+    }));
   }
 
-  log(`serving static files from: ${distPath}`);
-  app.use(express.static(distPath, {
-    index: false, // Handle index manually with the catch-all
-    maxAge: '1d',
-    immutable: true
-  }));
-
-  // fall through to index.html if the file doesn't exist (SPA routing)
+  // SPA fallback handler
   app.use("*", (req, res, next) => {
-    // Skip API and files with extensions
-    if (req.path.startsWith('/api/') || req.path.includes('.')) {
+    // 1. Skip API routes obviously
+    if (req.path.startsWith('/api/')) {
       return next();
     }
 
-    const indexPath = path.resolve(distPath, "index.html");
-
-    // Si es una ruta de API o parece un archivo estático (tiene extensión), devolvemos 404
-    if (req.path.startsWith('/api/') || req.path.includes('.')) {
-      res.status(404).send("Not Found");
+    // 2. Prevent serving index.html for missing static assets (images, js, css)
+    // This fixes the "MIME type text/html" error for missing scripts
+    const ext = path.extname(req.path);
+    if (ext && ext !== '.html') {
+      res.status(404).json({ message: "Not found", path: req.path });
       return;
     }
 
-    if (fs.existsSync(indexPath)) {
+    // 3. Serve index.html for all other routes (SPA)
+    const indexPath = distPath ? path.resolve(distPath, "index.html") : null;
+
+    if (indexPath && fs.existsSync(indexPath)) {
       res.sendFile(indexPath);
     } else {
-      res.status(404).send("Not Found");
+      res.status(404).send("Application not found (index.html missing)");
     }
   });
 }
