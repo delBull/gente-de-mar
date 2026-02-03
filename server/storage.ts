@@ -14,6 +14,7 @@ export interface IStorage {
   getUser(id: number): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
+  updateUser(id: number, user: Partial<User>): Promise<User>;
   authenticateUser(username: string, password: string): Promise<User | null>;
   getUsers(): Promise<User[]>;
 
@@ -163,6 +164,7 @@ export class MemStorage implements IStorage {
       createdAt: new Date(),
       businessId: null,
       permissions: ["all"],
+      payoutConfig: null,
       lastLogin: null
     };
 
@@ -177,6 +179,7 @@ export class MemStorage implements IStorage {
       createdAt: new Date(),
       businessId: 1,
       permissions: ["view_tour_metrics", "manage_my_tours"],
+      payoutConfig: null,
       lastLogin: null
     };
 
@@ -191,6 +194,7 @@ export class MemStorage implements IStorage {
       createdAt: new Date(),
       businessId: 1,
       permissions: ["redeem_tickets", "view_redemptions"],
+      payoutConfig: null,
       lastLogin: null
     };
 
@@ -424,10 +428,19 @@ export class MemStorage implements IStorage {
       createdAt: new Date(),
       lastLogin: null,
       businessId: insertUser.businessId || null,
-      permissions: insertUser.permissions || null
+      permissions: insertUser.permissions || null,
+      payoutConfig: null
     };
     this.users.set(id, user);
     return user;
+  }
+
+  async updateUser(id: number, userUpdate: Partial<User>): Promise<User> {
+    const existing = this.users.get(id);
+    if (!existing) throw new Error("User not found");
+    const updated = { ...existing, ...userUpdate };
+    this.users.set(id, updated);
+    return updated;
   }
 
   // Tours
@@ -971,6 +984,22 @@ export class DatabaseStorage implements IStorage {
       return user;
     } catch (error) {
       console.error("Error creating user:", error);
+      throw error;
+    }
+  }
+
+  async updateUser(id: number, userUpdate: Partial<User>): Promise<User> {
+    try {
+      const [updated] = await db
+        .update(users)
+        .set(userUpdate)
+        .where(eq(users.id, id))
+        .returning();
+
+      if (!updated) throw new Error("User not found");
+      return updated;
+    } catch (error) {
+      console.error("Error updating user:", error);
       throw error;
     }
   }

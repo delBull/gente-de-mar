@@ -82,36 +82,32 @@ export function serveStatic(app: Express) {
   for (const p of possiblePaths) {
     if (fs.existsSync(p)) {
       distPath = p;
+      log(`Found static directory: ${distPath}`);
       break;
     }
   }
 
   if (!distPath) {
-    log(`WARNING: Static directory not found. Checked: ${possiblePaths.join(", ")}`);
-    try {
-      const listDir = (dir: string, depth = 0) => {
-        if (depth > 2) return;
-        const files = fs.readdirSync(dir);
-        log(`${" ".repeat(depth * 2)}Contents of ${dir}: ${files.join(", ")}`);
-        for (const file of files) {
-          const fullPath = path.join(dir, file);
-          if (fs.statSync(fullPath).isDirectory() && !file.startsWith('.')) {
-            listDir(fullPath, depth + 1);
-          }
-        }
-      };
-      listDir(process.cwd());
-    } catch (e) {
-      log(`Could not introspect file system: ${e}`);
-    }
+    log(`ERROR: No static directory found. Deployment might be broken.`);
+    log(`Current working directory: ${process.cwd()}`);
+    log(`Import.meta.dirname: ${import.meta.dirname}`);
     return;
   }
 
   log(`serving static files from: ${distPath}`);
-  app.use(express.static(distPath));
+  app.use(express.static(distPath, {
+    index: false, // Handle index manually with the catch-all
+    maxAge: '1d',
+    immutable: true
+  }));
 
   // fall through to index.html if the file doesn't exist (SPA routing)
-  app.use("*", (req, res) => {
+  app.use("*", (req, res, next) => {
+    // Skip API and files with extensions
+    if (req.path.startsWith('/api/') || req.path.includes('.')) {
+      return next();
+    }
+
     const indexPath = path.resolve(distPath, "index.html");
 
     // Si es una ruta de API o parece un archivo estático (tiene extensión), devolvemos 404

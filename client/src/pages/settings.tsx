@@ -11,14 +11,24 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { Save, User, Bell, CreditCard, Shield, Smartphone, Receipt, Building, Settings as SettingsIcon } from "lucide-react";
+import { Save, User, Bell, CreditCard, Shield, Smartphone, Receipt, Building, Settings as SettingsIcon, Landmark } from "lucide-react";
 import MobileSidebar from "@/components/mobile-sidebar";
+import { useAuth } from "@/hooks/useAuth";
+
+interface PayoutConfig {
+  bankName: string;
+  accountHolder: string;
+  accountNumber: string;
+  clabe: string;
+  taxId: string;
+}
 
 export default function Settings() {
+  const { user, refetchUser } = useAuth();
   const [profileData, setProfileData] = useState({
-    fullName: "Darío",
-    email: "dario@bookeros.com",
-    phone: "+52 322 123 4567",
+    fullName: user?.fullName || "Darío",
+    email: user?.email || "dario@bookeros.com",
+    phone: (user as any)?.phone || "+52 322 123 4567",
     businessName: "BookerOS Tours",
     businessAddress: "Puerto Vallarta, Jalisco",
     businessDescription: "Plataforma Premium de Gestión de Experiencias y Tours"
@@ -39,6 +49,20 @@ export default function Settings() {
     payoutSchedule: "weekly",
     minimumPayout: "1000",
     bankAccount: "**** **** **** 1234"
+  });
+
+  const [payoutConfig, setPayoutConfig] = useState<PayoutConfig>(() => {
+    try {
+      return (user as any)?.payoutConfig ? JSON.parse((user as any).payoutConfig) : {
+        bankName: "",
+        accountHolder: "",
+        accountNumber: "",
+        clabe: "",
+        taxId: ""
+      };
+    } catch (e) {
+      return { bankName: "", accountHolder: "", accountNumber: "", clabe: "", taxId: "" };
+    }
   });
 
   const { toast } = useToast();
@@ -96,11 +120,26 @@ export default function Settings() {
     });
   };
 
+  const updatePayoutConfigMutation = useMutation({
+    mutationFn: async (config: any) => {
+      const response = await apiRequest("PATCH", `/api/users/${user?.id}/payout-config`, {
+        payoutConfig: JSON.stringify(config)
+      });
+      return response.json();
+    },
+    onSuccess: (updatedUser) => {
+      toast({
+        title: "Configuración de pagos guardada",
+        description: "Tus detalles para recibir transferencias han sido actualizados.",
+      });
+      // Update local storage and auth context
+      localStorage.setItem("auth_user", JSON.stringify(updatedUser));
+      refetchUser();
+    },
+  });
+
   const handlePaymentSave = () => {
-    toast({
-      title: "Configuración de pagos actualizada",
-      description: "Tu configuración de pagos ha sido guardada exitosamente.",
-    });
+    updatePayoutConfigMutation.mutate(payoutConfig);
   };
 
   const handleRetentionSave = () => {
@@ -337,81 +376,76 @@ export default function Settings() {
               </Card>
             </TabsContent>
 
-            {/* Payments Tab */}
+            {/* Payments/Payouts Tab */}
             <TabsContent value="payments">
               <Card className="bg-gray-800 border border-gray-700 shadow-sm">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-white">
-                    <CreditCard className="w-5 h-5 text-white" />
-                    Configuración de Pagos
+                    <Landmark className="w-5 h-5 text-blue-400" />
+                    Detalles para Recibir Pagos
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-6">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-2">
-                      <Label htmlFor="defaultCurrency" className="text-white">Moneda Predeterminada</Label>
-                      <Select value={paymentSettings.defaultCurrency} onValueChange={(value) => setPaymentSettings(prev => ({ ...prev, defaultCurrency: value }))}>
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="MXN">Peso Mexicano (MXN)</SelectItem>
-                          <SelectItem value="USD">Dólar Estadounidense (USD)</SelectItem>
-                          <SelectItem value="EUR">Euro (EUR)</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="payoutSchedule" className="text-white">Frecuencia de Pagos</Label>
-                      <Select value={paymentSettings.payoutSchedule} onValueChange={(value) => setPaymentSettings(prev => ({ ...prev, payoutSchedule: value }))}>
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="daily">Diario</SelectItem>
-                          <SelectItem value="weekly">Semanal</SelectItem>
-                          <SelectItem value="monthly">Mensual</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="minimumPayout" className="text-white">Pago Mínimo</Label>
+                      <Label htmlFor="bankName" className="text-white">Institución Bancaria</Label>
                       <Input
-                        id="minimumPayout"
-                        type="number"
-                        value={paymentSettings.minimumPayout}
-                        onChange={(e) => setPaymentSettings(prev => ({ ...prev, minimumPayout: e.target.value }))}
-                        className="bg-transparent border-gray-300 focus:border-blue-500 text-white"
+                        id="bankName"
+                        value={payoutConfig.bankName}
+                        onChange={(e) => setPayoutConfig(prev => ({ ...prev, bankName: e.target.value }))}
+                        placeholder="Ej: BBVA, Santander, Banorte..."
+                        className="bg-transparent border-gray-600 focus:border-blue-500 text-white"
                       />
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="bankAccount" className="text-white">Cuenta Bancaria</Label>
+                      <Label htmlFor="accountHolder" className="text-white">Titular de la Cuenta</Label>
                       <Input
-                        id="bankAccount"
-                        value={paymentSettings.bankAccount}
-                        onChange={(e) => setPaymentSettings(prev => ({ ...prev, bankAccount: e.target.value }))}
-                        placeholder="**** **** **** 1234"
+                        id="accountHolder"
+                        value={payoutConfig.accountHolder}
+                        onChange={(e) => setPayoutConfig(prev => ({ ...prev, accountHolder: e.target.value }))}
+                        placeholder="Nombre completo del titular"
+                        className="bg-transparent border-gray-600 focus:border-blue-500 text-white"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="clabe" className="text-white">CLABE Interbancaria (18 dígitos)</Label>
+                      <Input
+                        id="clabe"
+                        value={payoutConfig.clabe}
+                        onChange={(e) => setPayoutConfig(prev => ({ ...prev, clabe: e.target.value }))}
+                        placeholder="000000000000000000"
+                        maxLength={18}
+                        className="bg-transparent border-gray-600 focus:border-blue-500 text-white font-mono"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="taxId" className="text-white">RFC / Tax ID</Label>
+                      <Input
+                        id="taxId"
+                        value={payoutConfig.taxId}
+                        onChange={(e) => setPayoutConfig(prev => ({ ...prev, taxId: e.target.value }))}
+                        placeholder="RFC con homoclave"
+                        className="bg-transparent border-gray-600 focus:border-blue-500 text-white"
                       />
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-between p-4 bg-muted rounded-lg">
-                    <div className="space-y-0.5">
-                      <Label>Pagos Automáticos</Label>
-                      <p className="text-sm text-muted-foreground">Enviar pagos automáticamente según el horario</p>
-                    </div>
-                    <Switch
-                      checked={paymentSettings.autoPayouts}
-                      onCheckedChange={(checked) => setPaymentSettings(prev => ({ ...prev, autoPayouts: checked }))}
-                    />
+                  <div className="p-4 bg-blue-500/10 border border-blue-500/20 rounded-lg">
+                    <p className="text-sm text-blue-200">
+                      <strong>Nota:</strong> Estos datos se utilizarán para realizar las transferencias de tus comisiones y pagos netos de forma automática o programada.
+                    </p>
                   </div>
 
-                  <Button onClick={handlePaymentSave} className="bg-primary text-primary-foreground hover:bg-primary/90">
+                  <Button
+                    onClick={handlePaymentSave}
+                    disabled={updatePayoutConfigMutation.isPending}
+                    className="btn-ocean-primary"
+                  >
                     <Save className="w-4 h-4 mr-2" />
-                    Guardar Configuración
+                    {updatePayoutConfigMutation.isPending ? "Guardando..." : "Guardar Configuración de Pagos"}
                   </Button>
                 </CardContent>
               </Card>

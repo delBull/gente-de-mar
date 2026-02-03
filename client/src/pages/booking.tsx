@@ -44,7 +44,7 @@ interface Tour {
   includes?: string[];
   requirements?: string;
   category: string;
-  gallery?: string[];
+  galleryUrls?: string[];
 }
 
 export default function Booking() {
@@ -342,6 +342,27 @@ export default function Booking() {
                   </p>
                 </CardContent>
               </Card>
+            )}
+
+            {/* Galería */}
+            {(tour as any).galleryUrls && Array.isArray((tour as any).galleryUrls) && (tour as any).galleryUrls.length > 0 && (
+              <div className="space-y-3">
+                <h3 className="text-lg font-bold flex items-center">
+                  <Star className="w-5 h-5 mr-2 text-yellow-500" />
+                  Galería
+                </h3>
+                <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide snap-x">
+                  {(tour as any).galleryUrls.map((url: string, index: number) => (
+                    <div key={index} className="flex-shrink-0 w-64 h-40 rounded-xl overflow-hidden shadow-md snap-center">
+                      <img
+                        src={url}
+                        alt={`Gallery ${index + 1}`}
+                        className="w-full h-full object-cover hover:scale-110 transition-transform duration-500"
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
             )}
 
             <Button

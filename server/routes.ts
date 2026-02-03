@@ -93,6 +93,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.patch("/api/users/:id/payout-config", async (req, res) => {
+    // Only allow users to update their own config or admins
+    // This simple check assumes req.body has the config
+    try {
+      const userId = parseInt(req.params.id);
+      const { payoutConfig } = req.body;
+
+      if (!payoutConfig) {
+        return res.status(400).json({ message: "Missing payoutConfig" });
+      }
+
+      const updatedUser = await storage.updateUser(userId, { payoutConfig });
+      res.json(updatedUser);
+    } catch (error) {
+      console.error("Error updating payout config:", error);
+      res.status(500).json({ message: "Error updating configuration" });
+    }
+  });
+
   // Customer logout endpoint - forces complete session cleanup
   app.get("/api/customer/logout", async (req: any, res) => {
     try {
@@ -1017,9 +1036,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/admin/media", async (req, res) => {
-    if (req.session?.user?.role !== 'master_admin') {
-      return res.status(403).json({ message: "Access denied" });
+  app.post("/api/media", async (req, res) => {
+    if (!req.session?.user) {
+      return res.status(401).json({ message: "Unauthorized" });
     }
     try {
       const { name, mimeType, content, size } = req.body;

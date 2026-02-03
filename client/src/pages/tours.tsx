@@ -25,7 +25,11 @@ interface Tour {
   imageUrl?: string;
   description?: string;
   richDescription?: string;
-  galleryUrls?: string;
+  galleryUrls?: string[];
+  duration?: string;
+  departureTime?: string;
+  requirements?: string;
+  includes?: string[];
   sellerId?: number;
   providerId?: number;
 }
@@ -37,10 +41,27 @@ interface User {
   role: string;
 }
 
+interface TourFormData {
+  name: string;
+  location: string;
+  price: string;
+  status: string;
+  description: string;
+  richDescription: string;
+  imageUrl: string;
+  galleryUrls: string;
+  duration: string;
+  departureTime: string;
+  requirements: string;
+  includes: string[];
+  sellerId: number | undefined;
+  providerId: number | undefined;
+}
+
 export default function Tours() {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingTour, setEditingTour] = useState<Tour | null>(null);
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<TourFormData>({
     name: "",
     location: "",
     price: "",
@@ -49,9 +70,15 @@ export default function Tours() {
     richDescription: "",
     imageUrl: "",
     galleryUrls: "",
-    sellerId: undefined as number | undefined,
-    providerId: undefined as number | undefined,
+    duration: "",
+    departureTime: "",
+    requirements: "",
+    includes: [],
+    sellerId: undefined,
+    providerId: undefined,
   });
+
+  const [isUploading, setIsUploading] = useState(false);
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -121,6 +148,10 @@ export default function Tours() {
       richDescription: "",
       imageUrl: "",
       galleryUrls: "",
+      duration: "",
+      departureTime: "",
+      requirements: "",
+      includes: [] as string[],
       sellerId: undefined,
       providerId: undefined,
     });
@@ -135,11 +166,70 @@ export default function Tours() {
       description: tour.description || "",
       richDescription: tour.richDescription || "",
       imageUrl: tour.imageUrl || "",
-      galleryUrls: tour.galleryUrls || "",
+      galleryUrls: tour.galleryUrls?.join(",") || "",
+      duration: tour.duration || "",
+      departureTime: tour.departureTime || "",
+      requirements: tour.requirements || "",
+      includes: tour.includes || [],
       sellerId: tour.sellerId,
       providerId: tour.providerId,
     });
     setEditingTour(tour);
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, field: 'imageUrl' | 'gallery') => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    setIsUploading(true);
+    try {
+      // Process one file at a time for safety
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const reader = new FileReader();
+
+        const base64Promise = new Promise<string>((resolve, reject) => {
+          reader.onload = () => {
+            const result = reader.result as string;
+            // Remove data:image/jpeg;base64, prefix
+            const base64 = result.split(',')[1];
+            resolve(base64);
+          };
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+
+        const content = await base64Promise;
+
+        const res = await apiRequest("POST", "/api/media", {
+          name: file.name,
+          mimeType: file.type,
+          size: file.size,
+          content: content
+        });
+
+        if (!res.ok) throw new Error("Upload failed");
+
+        const media = await res.json();
+        const mediaUrl = `/api/media/${media.id}?raw=true`;
+
+        if (field === 'imageUrl') {
+          setFormData(prev => ({ ...prev, imageUrl: mediaUrl }));
+        } else {
+          setFormData(prev => ({
+            ...prev,
+            galleryUrls: prev.galleryUrls ? `${prev.galleryUrls},${mediaUrl}` : mediaUrl
+          }));
+        }
+      }
+
+      toast({ title: "Imagen subida exitosamente" });
+    } catch (error) {
+      console.error(error);
+      toast({ title: "Error al subir imagen", variant: "destructive" });
+    } finally {
+      setIsUploading(false);
+    }
   };
 
   const handleSubmit = () => {
@@ -217,6 +307,26 @@ export default function Tours() {
             />
           </div>
           <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="duration" className="text-right">Duración</Label>
+            <Input
+              id="duration"
+              value={formData.duration}
+              onChange={(e) => setFormData(prev => ({ ...prev, duration: e.target.value }))}
+              className="col-span-3"
+              placeholder="Ej: 4 horas"
+            />
+          </div>
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="departureTime" className="text-right">Horario</Label>
+            <Input
+              id="departureTime"
+              value={formData.departureTime}
+              onChange={(e) => setFormData(prev => ({ ...prev, departureTime: e.target.value }))}
+              className="col-span-3"
+              placeholder="Ej: 9:00 AM"
+            />
+          </div>
+          <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="status" className="text-right">Estado</Label>
             <Select value={formData.status} onValueChange={(value) => setFormData(prev => ({ ...prev, status: value }))}>
               <SelectTrigger className="col-span-3">
@@ -267,6 +377,36 @@ export default function Tours() {
           </div>
 
           <div className="space-y-2">
+            <Label htmlFor="includes" className="flex items-center">
+              <Info className="w-4 h-4 mr-2" />
+              Que Incluye (separado por comas)
+            </Label>
+            <Textarea
+              id="includes"
+              value={Array.isArray(formData.includes) ? formData.includes.join(", ") : formData.includes}
+              onChange={(e) => setFormData(prev => ({ ...prev, includes: e.target.value.split(",").map(s => s.trim()) }))}
+              className="w-full"
+              rows={2}
+              placeholder="Bebidas, Comida, Transporte..."
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="requirements" className="flex items-center">
+              <Info className="w-4 h-4 mr-2" />
+              Requisitos
+            </Label>
+            <Textarea
+              id="requirements"
+              value={formData.requirements}
+              onChange={(e) => setFormData(prev => ({ ...prev, requirements: e.target.value }))}
+              className="w-full"
+              rows={2}
+              placeholder="Edad mínima, ropa cómoda..."
+            />
+          </div>
+
+          <div className="space-y-2">
             <Label className="flex items-center justify-between">
               <span className="flex items-center">
                 <Edit className="w-4 h-4 mr-2" />
@@ -300,9 +440,29 @@ export default function Tours() {
 
         <TabsContent value="media" className="space-y-4 pt-4">
           <div className="space-y-2">
-            <Label htmlFor="imageUrl" className="flex items-center">
-              <ImageIcon className="w-4 h-4 mr-2" />
-              Imagen Principal (URL)
+            <Label htmlFor="imageUrl" className="flex items-center justify-between">
+              <div className="flex items-center">
+                <ImageIcon className="w-4 h-4 mr-2" />
+                Imagen Principal
+              </div>
+              <div className="relative">
+                <input
+                  type="file"
+                  id="imageUpload"
+                  className="hidden"
+                  accept="image/*"
+                  onChange={(e) => handleFileUpload(e, 'imageUrl')}
+                />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  type="button"
+                  disabled={isUploading}
+                  onClick={() => document.getElementById('imageUpload')?.click()}
+                >
+                  {isUploading ? "Subiendo..." : "Subir Imagen"}
+                </Button>
+              </div>
             </Label>
             <div className="flex gap-2">
               <Input
@@ -321,9 +481,30 @@ export default function Tours() {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="galleryUrls" className="flex items-center">
-              <ImageIcon className="w-4 h-4 mr-2" />
-              Galería de Imágenes (URLs separadas por comas)
+            <Label htmlFor="galleryUrls" className="flex items-center justify-between">
+              <div className="flex items-center">
+                <ImageIcon className="w-4 h-4 mr-2" />
+                Galería de Imágenes
+              </div>
+              <div className="relative">
+                <input
+                  type="file"
+                  id="galleryUpload"
+                  className="hidden"
+                  accept="image/*"
+                  multiple
+                  onChange={(e) => handleFileUpload(e, 'gallery')}
+                />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  type="button"
+                  disabled={isUploading}
+                  onClick={() => document.getElementById('galleryUpload')?.click()}
+                >
+                  {isUploading ? "Subiendo..." : "Subir a Galería"}
+                </Button>
+              </div>
             </Label>
             <Textarea
               id="galleryUrls"

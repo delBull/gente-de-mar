@@ -12,6 +12,7 @@ export const users = pgTable("users", {
   businessId: integer("business_id").references(() => businesses.id),
   permissions: text("permissions").array(), // array of permission strings
   isActive: boolean("is_active").notNull().default(true),
+  payoutConfig: text("payout_config"), // JSON string with bank details (CLABE, Bank name, etc.)
   createdAt: timestamp("created_at").defaultNow(),
   lastLogin: timestamp("last_login"),
 });
