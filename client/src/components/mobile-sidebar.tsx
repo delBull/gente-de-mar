@@ -29,7 +29,8 @@ import {
   ChevronRight,
   Globe,
   ShoppingCart,
-  Camera
+  Camera,
+  BookOpen
 } from "lucide-react";
 
 const navigation = [
@@ -41,6 +42,7 @@ const navigation = [
   { name: "Reportes", href: "/reports", icon: BarChart3, section: "reports" },
   { name: "Portal de Reservas", href: "/customer", icon: ShoppingCart, section: "customer" },
   { name: "Configuración", href: "/settings", icon: Settings, section: "settings" },
+  { name: "Guía de Uso", href: "/guide", icon: BookOpen, section: "dashboard" },
   { name: "Canjear Ticket", href: "/redeem", icon: QrCode, section: "redeem" },
 ];
 

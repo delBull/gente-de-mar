@@ -1,12 +1,13 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage.js";
-import { insertTransactionSchema, insertTourSchema, insertBookingSchema, insertSeatHoldSchema, insertTicketRedemptionSchema, insertPaymentSchema, insertAvailabilityOverrideSchema } from "../shared/schema.js";
+import { insertTransactionSchema, insertTourSchema, insertBookingSchema, insertSeatHoldSchema, insertTicketRedemptionSchema, insertPaymentSchema, insertAvailabilityOverrideSchema, type User } from "../shared/schema.js";
 import { nanoid } from "nanoid";
 import { generateAlphanumericCode, canRedeemTickets, canCreateTours } from "../shared/utils.js";
 import { log } from "./vite.js";
-import { createCheckoutSession, verifyPayment, processRefund, PAYMENT_MODE } from "./stripe.js";
+import { createCheckoutSession, verifyPayment, processRefund, PAYMENT_MODE, createConnectedAccount, createAccountLink } from "./stripe.js";
 import { sendBookingConfirmationEmail } from "./email.js";
+import { blobStorage } from "./services/blob/vercel.js";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Initialize database with users on server start
@@ -312,6 +313,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get all bookings (with optional filtering)
+  app.get("/api/bookings", async (req, res) => {
+    try {
+      // In a real app, we'd filter by the logged-in user's business
+      // For now, we'll return all bookings enriched with tour info
+      // We can use the existing getBookingsByBusiness(1) as a temporary measure or a new method
+      // Let's assume businessId 1 for the main provider
+      const bookings = await storage.getBookingsByBusiness(1);
+
+      // We need to fetch tour details for each booking to display names/locations
+      // Ideally storage.getBookingsByBusiness would do a join, but let's check what it returns
+      // The interface implementation in storage.ts shows it joins but returns raw booking objects
+      // Let's enrich them here manually if needed, or update storage.
+
+      // Actually, looking at storage.ts earlier:
+      // it did .innerJoin(tours...) but returned r.booking.
+
+      // Let's get all tours to map efficiently
+      const tours = await storage.getTours();
+      const toursMap = new Map(tours.map(t => [t.id, t]));
+
+      const enrichedBookings = bookings.map(booking => {
+        const tour = toursMap.get(booking.tourId);
+        return {
+          ...booking,
+          tourName: tour?.name || "Unknown Tour",
+          location: tour?.location || "Unknown Location",
+          // Add other fields expected by frontend if missing
+        };
+      });
+
+      res.json(enrichedBookings);
+    } catch (error) {
+      console.error("Error fetching bookings:", error);
+      res.status(500).json({ message: "Error fetching bookings" });
+    }
+  });
+
   // Create booking
   app.post("/api/bookings", async (req, res) => {
     try {
@@ -332,17 +371,63 @@ export async function registerRoutes(app: Express): Promise<Server> {
         specialRequests: req.body.specialRequests || null
       };
 
+      // Handle Coupon & Referral
+      let finalAmount = parseFloat(bookingData.totalAmount);
+      const couponCode = req.body.couponCode;
+      const referralCode = req.body.referralCode;
+      let usedReferral: User | undefined;
+
+      if (couponCode) {
+        const coupon = await storage.getCouponByCode(couponCode);
+        if (coupon && coupon.isActive) {
+          const isValid = (!coupon.expirationDate || new Date(coupon.expirationDate) > new Date()) &&
+            (!coupon.usageLimit || (coupon.usageCount || 0) < coupon.usageLimit);
+
+          if (isValid) {
+            if (coupon.discountType === 'percent') {
+              finalAmount = finalAmount * (1 - coupon.discountValue / 100);
+            } else {
+              finalAmount = Math.max(0, finalAmount - coupon.discountValue);
+            }
+            await storage.incrementCouponUsage(coupon.id);
+          }
+        }
+      } else if (referralCode) {
+        // Only check referral if no coupon used (prevent double dipping for now)
+        const referrer = await storage.getUserByReferralCode(referralCode);
+        if (referrer && referrer.isActive) {
+          // Verify referrer is not self (if logged in)
+          if (!req.session?.user || req.session.user.id !== referrer.id) {
+            usedReferral = referrer;
+            // Apply standard referral discount (e.g., 10%)
+            finalAmount = finalAmount * 0.90;
+          }
+        }
+      }
+
       // Generate QR code data and alphanumeric code
       const qrCode = nanoid();
       const alphanumericCode = generateAlphanumericCode();
 
       const booking = await storage.createBooking({
         ...bookingData,
+        totalAmount: finalAmount.toString(),
         qrCode,
         alphanumericCode,
         status: "confirmed",
         reservedUntil: new Date(Date.now() + 15 * 60 * 1000)
       });
+
+      if (usedReferral) {
+        // Create referral record
+        await storage.createReferral({
+          referrerId: usedReferral.id,
+          bookingId: booking.id,
+          referredUserId: req.session?.user?.id || null, // Capture if user is logged in
+          status: 'pending',
+          rewardAmount: Math.floor(parseFloat(bookingData.totalAmount) * 0.05), // 5% reward to referrer
+        });
+      }
 
 
       res.json(booking);
@@ -381,8 +466,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.json({ url: session.url, sessionId: session.id, mode: session.mode });
     } catch (error) {
-      console.error("Stripe session creation error:", error);
+      console.log("Stripe session creation error:", error);
       res.status(500).json({ message: "Error creating payment session" });
+    }
+  });
+
+  // Validate Coupon
+  app.post("/api/coupons/validate", async (req, res) => {
+    try {
+      const { code } = req.body;
+      if (!code) return res.status(400).json({ message: "Code is required" });
+
+      const coupon = await storage.getCouponByCode(code);
+      if (!coupon) return res.status(404).json({ message: "Invalid coupon code" });
+
+      if (!coupon.isActive) return res.status(400).json({ message: "Coupon is inactive" });
+
+      if (coupon.expirationDate && new Date(coupon.expirationDate) < new Date()) {
+        return res.status(400).json({ message: "Coupon has expired" });
+      }
+
+      if (coupon.usageLimit && (coupon.usageCount || 0) >= coupon.usageLimit) {
+        return res.status(400).json({ message: "Coupon usage limit reached" });
+      }
+
+      res.json(coupon);
+    } catch (error) {
+      console.error("Coupon validation error:", error);
+      res.status(500).json({ message: "Error validating coupon" });
     }
   });
 
@@ -595,6 +706,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ success: true });
     } catch (error) {
       res.status(500).json({ message: "Error resolving booking" });
+    }
+  });
+
+  // Check-in Booking
+  app.post("/api/bookings/:id/check-in", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const booking = await storage.checkInBooking(id);
+
+      if (!booking) return res.status(404).json({ message: "Booking not found" });
+
+      res.json({ success: true, booking });
+    } catch (error) {
+      console.error("Check-in error:", error);
+      res.status(500).json({ message: "Error checking in booking" });
+    }
+  });
+
+  // Get Booking by QR Code
+  app.get("/api/bookings/qr/:code", async (req, res) => {
+    try {
+      const { code } = req.params;
+      const booking = await storage.getBookingByQR(code);
+
+      if (!booking) return res.status(404).json({ message: "Booking not found" });
+
+      res.json(booking);
+    } catch (error) {
+      console.error("QR lookup error:", error);
+      res.status(500).json({ message: "Error looking up booking" });
     }
   });
 
@@ -895,6 +1036,62 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Stripe Connect Routes
+  app.post("/api/stripe/connect", async (req, res) => {
+    if (!req.session?.user) return res.status(401).json({ message: "Unauthorized" });
+
+    // Only sellers (business owners) can connect
+    if (!req.session.user.businessId) {
+      return res.status(400).json({ message: "No business linked to user" });
+    }
+
+    try {
+      const business = await storage.getBusiness(req.session.user.businessId);
+      if (!business) return res.status(404).json({ message: "Business not found" });
+
+      let accountId = business.stripeAccountId;
+
+      // Create account if not exists
+      if (!accountId) {
+        const account = await createConnectedAccount(business.contactEmail);
+        accountId = account.id;
+        await storage.updateBusiness(business.id, { stripeAccountId: accountId });
+      }
+
+      // Create Onboarding Link
+      const protocol = req.headers['x-forwarded-proto'] || 'http';
+      const host = req.headers.host;
+      const baseUrl = `${protocol}://${host}`;
+
+      const accountLink = await createAccountLink(
+        accountId,
+        `${baseUrl}/api/stripe/refresh`,
+        `${baseUrl}/api/stripe/return?businessId=${business.id}`
+      );
+
+      res.json({ url: accountLink.url });
+    } catch (error: any) {
+      console.error("Stripe Connect error:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.get("/api/stripe/return", async (req, res) => {
+    const businessId = req.query.businessId ? parseInt(req.query.businessId as string) : null;
+    if (businessId) {
+      await storage.updateBusiness(businessId, { stripeOnboardingCompleted: true });
+      // Redirect to dashboard with success param
+      res.redirect('/dashboard?connect=success');
+    } else {
+      res.redirect('/dashboard?connect=error');
+    }
+  });
+
+  app.get("/api/stripe/refresh", (req, res) => {
+    // Redirect back to dashboard to retry
+    res.redirect('/dashboard?connect=refresh');
+  });
+
   // Stripe & Payment Routes
   app.post("/api/bookings/:id/checkout", async (req, res) => {
     try {
@@ -1023,12 +1220,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // If it's a request for the raw content (e.g. for an img tag)
       if (req.query.raw === 'true') {
-        const buffer = Buffer.from(m.content, 'base64');
-        res.setHeader('Content-Type', m.mimeType);
-        return res.send(buffer);
+        // If we have a blob URL, redirect to it
+        if (m.url) {
+          return res.redirect(m.url);
+        }
+
+        // Fallback to database content
+        if (m.content) {
+          const buffer = Buffer.from(m.content, 'base64');
+          res.setHeader('Content-Type', m.mimeType);
+          return res.send(buffer);
+        }
+
+        return res.status(404).json({ message: "Media content not found" });
       }
 
-      // Otherwise return metadata (without the huge content string if not requested)
+      // Otherwise return metadata
       const { content, ...metadata } = m;
       res.json(metadata);
     } catch (error) {
@@ -1042,13 +1249,82 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
     try {
       const { name, mimeType, content, size } = req.body;
-      if (!name || !mimeType || !content || !size) {
+      if (!name || !mimeType || !size) {
         return res.status(400).json({ message: "Missing media data" });
       }
-      const m = await storage.createMedia({ name, mimeType, content, size });
+
+      let url: string | undefined;
+      let savedContent: string | undefined = content;
+
+      // Upload to Blob Storage if content is provided
+      if (content) {
+        try {
+          const buffer = Buffer.from(content, 'base64');
+          url = await blobStorage.put(name, buffer, {
+            contentType: mimeType,
+            access: 'public'
+          });
+          // Optionally clear content to save DB space, but for now strictly following plan to just migrate
+          // savedContent = null; // Un-comment if we want to stop saving base64 to DB immediately
+        } catch (uploadError) {
+          console.error("Blob upload failed, falling back to database storage:", uploadError);
+        }
+      }
+
+      const m = await storage.createMedia({
+        name,
+        mimeType,
+        content: savedContent, // Keep saving content for fallback/legacy support for now
+        url,
+        size
+      });
       res.status(201).json(m);
     } catch (error) {
+      console.error("Media creation error:", error);
       res.status(500).json({ message: "Error creating media" });
+    }
+  });
+
+  // Coupons & Referrals Validation
+  app.post("/api/coupons/validate", async (req, res) => {
+    try {
+      const { code } = req.body;
+      if (!code) return res.status(400).json({ message: "Code is required" });
+
+      // 1. Check Coupon
+      const coupon = await storage.getCouponByCode(code);
+      if (coupon && coupon.isActive) {
+        const isValid = (!coupon.expirationDate || new Date(coupon.expirationDate) > new Date()) &&
+          (!coupon.usageLimit || (coupon.usageCount || 0) < coupon.usageLimit);
+
+        if (isValid) {
+          return res.json({
+            code: coupon.code,
+            discountType: coupon.discountType,
+            discountValue: coupon.discountValue,
+            type: 'coupon'
+          });
+        } else {
+          // Coupon exists but invalid
+          return res.status(400).json({ message: "Cupón expirado o agotado" });
+        }
+      }
+
+      // 2. Check Referral
+      const referrer = await storage.getUserByReferralCode(code);
+      if (referrer && referrer.isActive) {
+        // Standard referral logic: 10% discount
+        return res.json({
+          code: referrer.referralCode,
+          discountType: 'percent',
+          discountValue: 10, // 10% discount
+          type: 'referral'
+        });
+      }
+
+      return res.status(404).json({ message: "Código no válido" });
+    } catch (error) {
+      res.status(500).json({ message: "Error validating code" });
     }
   });
 
@@ -1062,6 +1338,138 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(204).end();
     } catch (error) {
       res.status(500).json({ message: "Error deleting media" });
+    }
+  });
+
+  // Referral Routes
+  app.post("/api/referrals/generate", async (req, res) => {
+    if (!req.session?.user) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    try {
+      const user = await storage.getUser(req.session.user.id);
+      if (!user) return res.status(404).json({ message: "User not found" });
+
+      if (user.referralCode) {
+        return res.json({ code: user.referralCode });
+      }
+
+      const code = nanoid(8); // 8-char unique code
+      // Ensure specific uniqueness if needed, but 8 chars is safe for now
+
+      const updatedUser = await storage.updateUser(user.id, { referralCode: code });
+      // Update session user as well
+      req.session.user = {
+        ...updatedUser,
+        businessId: updatedUser.businessId ?? undefined
+      };
+
+      res.json({ code: updatedUser.referralCode });
+    } catch (error) {
+      res.status(500).json({ message: "Error generating referral code" });
+    }
+  });
+
+  app.get("/api/referrals/my-code", async (req, res) => {
+    if (!req.session?.user) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    try {
+      const user = await storage.getUser(req.session.user.id);
+      res.json({ code: user?.referralCode || null });
+    } catch (error) {
+      res.status(500).json({ message: "Error fetching referral code" });
+    }
+  });
+
+  app.get("/api/referrals/validate/:code", async (req, res) => {
+    try {
+      const code = req.params.code;
+      const user = await storage.getUserByReferralCode(code);
+
+      if (!user) {
+        return res.status(404).json({ valid: false, message: "Invalid code" });
+      }
+
+      if (!user.isActive) {
+        return res.status(400).json({ valid: false, message: "Referrer is inactive" });
+      }
+
+      res.json({
+        valid: true,
+        referrerName: user.fullName // Send limited info for confirmation
+      });
+    } catch (error) {
+      res.status(500).json({ message: "Error validating code" });
+    }
+  });
+
+  app.get("/api/referrals/stats", async (req, res) => {
+    if (!req.session?.user) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    try {
+      const referrals = await storage.getReferralsByUser(req.session.user.id);
+      res.json({
+        totalReferrals: referrals.length,
+        referrals
+      });
+    } catch (error) {
+      res.status(500).json({ message: "Error fetching stats" });
+    }
+  });
+
+  // CHECK-IN APP ROUTES
+
+  // Lookup booking by Alphanumeric Code or QR (which currently is the alpha code or booking ID)
+  // Logic: The QR code contains the 'alphanumericCode'.
+  app.get("/api/bookings/qr/:code", async (req, res) => {
+    try {
+      const code = req.params.code;
+      if (!code) return res.status(400).json({ message: "Code required" });
+
+      const bookings = await storage.getBookingsByBusiness(1);
+      // Ideally storage needs a 'getBookingByCode' method.
+
+      const booking = bookings.find(b => b.alphanumericCode === code || b.id.toString() === code);
+
+      if (!booking) {
+        return res.status(404).json({ message: "Booking not found" });
+      }
+
+      const tour = await storage.getTour(booking.tourId);
+
+      res.json({
+        ...booking,
+        tourName: tour?.name,
+        tourId: tour?.id
+      });
+    } catch (error) {
+      console.error("QR Lookup error:", error);
+      res.status(500).json({ message: "Error looking up booking" });
+    }
+  });
+
+  // Perform Check-in
+  app.post("/api/bookings/:id/check-in", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const booking = await storage.getBooking(id);
+
+      if (!booking) return res.status(404).json({ message: "Booking not found" });
+
+      if (booking.checkedIn) {
+        return res.json({ success: true, alreadyCheckedIn: true, checkedInAt: booking.checkedInAt });
+      }
+
+      const updated = await storage.updateBooking(id, {
+        checkedIn: true
+      });
+
+      res.json({ success: true, booking: updated });
+    } catch (error) {
+      console.error("Check-in error:", error);
+      res.status(500).json({ message: "Error performing check-in" });
     }
   });
 

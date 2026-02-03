@@ -101,3 +101,42 @@ export async function processRefund(paymentIntentId: string, amount?: number) {
         amount_refunded: (refund.amount || 0) / 100
     };
 }
+
+export async function createConnectedAccount(email: string) {
+    if (PAYMENT_MODE === 'sandbox') {
+        log(`[Stripe Sandbox] Creating connected account for ${email}`);
+        return {
+            id: `acct_mock_${Math.random().toString(36).substring(7)}`,
+            type: 'express'
+        };
+    }
+
+    const account = await stripe.accounts.create({
+        type: 'express',
+        email,
+        capabilities: {
+            card_payments: { requested: true },
+            transfers: { requested: true },
+        },
+    });
+
+    return account;
+}
+
+export async function createAccountLink(accountId: string, refreshUrl: string, returnUrl: string) {
+    if (PAYMENT_MODE === 'sandbox' || accountId.startsWith('acct_mock_')) {
+        log(`[Stripe Sandbox] Creating account link for ${accountId}`);
+        return {
+            url: `${returnUrl}?mock_onboarding=true`
+        };
+    }
+
+    const accountLink = await stripe.accountLinks.create({
+        account: accountId,
+        refresh_url: refreshUrl,
+        return_url: returnUrl,
+        type: 'account_onboarding',
+    });
+
+    return accountLink;
+}

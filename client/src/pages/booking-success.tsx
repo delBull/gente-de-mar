@@ -6,7 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import DigitalTicketPremium from "@/components/digital-ticket-premium";
-import { CheckCircle, ArrowLeft, Home, Calendar, Users, MapPin, Phone, Mail } from "lucide-react";
+import { generateBookingReceipt } from "@/lib/receipt-generator";
+import { CheckCircle, ArrowLeft, Home, Calendar, Users, MapPin, Phone, Mail, FileText, Download } from "lucide-react";
 
 interface BookingDetails {
   id: number;
@@ -361,6 +362,29 @@ export default function BookingSuccess() {
 
         {/* Action Buttons */}
         <div className="max-w-2xl mx-auto flex flex-col sm:flex-row gap-4 pt-6">
+          <div className="flex-1">
+            <Button
+              onClick={() => {
+                if (booking) {
+                  generateBookingReceipt({
+                    bookingId: booking.id,
+                    customerName: booking.customerName,
+                    customerEmail: booking.customerEmail,
+                    tourName: booking.tour?.name || "Tour",
+                    bookingDate: booking.bookingDate,
+                    amount: booking.totalAmount,
+                    adults: booking.adults,
+                    children: booking.children
+                  });
+                }
+              }}
+              variant="outline"
+              className="w-full h-12 text-blue-900 border-blue-200 bg-blue-50 hover:bg-blue-100"
+            >
+              <Download className="w-4 h-4 mr-2" />
+              Descargar Recibo
+            </Button>
+          </div>
           <Link href="/customer" className="flex-1">
             <Button variant="outline" className="w-full h-12 text-gray-900 border-gray-300 hover:bg-gray-50">
               <Home className="w-4 h-4 mr-2" />

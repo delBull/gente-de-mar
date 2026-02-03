@@ -13,6 +13,7 @@ import Reports from "@/pages/reports";
 import Settings from "@/pages/settings";
 import CustomerHome from "@/pages/customer-home";
 import Agenda from "@/pages/agenda";
+import CheckIn from "@/pages/check-in";
 import Customers from "@/pages/customers";
 import Booking from "@/pages/booking";
 import BookingSuccess from "@/pages/booking-success";
@@ -23,6 +24,8 @@ import RedeemTicket from "@/pages/redeem-ticket";
 import ResolveBooking from "@/pages/resolve-booking";
 import NotFound from "@/pages/not-found";
 import Login from "@/pages/login";
+import Welcome from "@/pages/welcome";
+import Guide from "@/pages/guide";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -49,6 +52,8 @@ function Router() {
       <Route path="/agenda" component={isAuthenticated ? Agenda : Login} />
       <Route path="/redeem" component={isAuthenticated ? RedeemTicket : Login} />
       <Route path="/redeem-ticket" component={isAuthenticated ? RedeemTicket : Login} />
+      <Route path="/check-in" component={isAuthenticated ? CheckIn : Login} />
+      <Route path="/guide" component={isAuthenticated ? Guide : Login} />
 
       {/* Customer Booking Routes - Public */}
       <Route path="/customer" component={CustomerHome} />
@@ -56,6 +61,7 @@ function Router() {
       <Route path="/booking-confirmation/:id" component={BookingConfirmation} />
       <Route path="/payment/:bookingData" component={Payment} />
       <Route path="/booking-success/:bookingId" component={BookingSuccess} />
+      <Route path="/welcome" component={Welcome} />
       <Route path="/ticket/:id" component={Ticket} />
       <Route path="/resolve-booking/:token" component={ResolveBooking} />
 

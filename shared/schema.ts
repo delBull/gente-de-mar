@@ -13,8 +13,10 @@ export const users = pgTable("users", {
   permissions: text("permissions").array(), // array of permission strings
   isActive: boolean("is_active").notNull().default(true),
   payoutConfig: text("payout_config"), // JSON string with bank details (CLABE, Bank name, etc.)
+  whatsappNumber: text("whatsapp_number"), // For frictionless communication
   createdAt: timestamp("created_at").defaultNow(),
   lastLogin: timestamp("last_login"),
+  referralCode: text("referral_code").unique(),
 });
 
 export const businesses = pgTable("businesses", {
@@ -26,6 +28,8 @@ export const businesses = pgTable("businesses", {
   address: text("address"),
   logo: text("logo"),
   isActive: boolean("is_active").notNull().default(true),
+  stripeAccountId: text("stripe_account_id").unique(),
+  stripeOnboardingCompleted: boolean("stripe_onboarding_completed").default(false),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -102,6 +106,9 @@ export const bookings = pgTable("bookings", {
   status: text("status").notNull().default("pending"), // pending, confirmed, completed, cancelled
   specialRequests: text("special_requests"),
   healthConditions: text("health_conditions"),
+  nationality: text("nationality"), // For manifest
+  checkedIn: boolean("checked_in").notNull().default(false), // For check-in app
+  checkedInAt: timestamp("checked_in_at"),
   paymentMethod: text("payment_method"), // card, crypto
   transactionHash: text("transaction_hash"),
   qrCode: text("qr_code"),
@@ -159,7 +166,8 @@ export const media = pgTable("media", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
   mimeType: text("mime_type").notNull(),
-  content: text("content").notNull(), // Base64 content
+  content: text("content"), // Base64 content (optional if using url)
+  url: text("url"), // Blob storage URL
   size: integer("size").notNull(),
   createdAt: timestamp("created_at").defaultNow(),
 });
@@ -174,6 +182,24 @@ export const availabilityOverrides = pgTable("availability_overrides", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+export const referrals = pgTable("referrals", {
+  id: serial("id").primaryKey(),
+  referrerId: integer("referrer_id").references(() => users.id).notNull(),
+  referredUserId: integer("referred_user_id").references(() => users.id),
+  bookingId: integer("booking_id").references(() => bookings.id).notNull(),
+  status: text("status").notNull().default("pending"),
+  rewardAmount: integer("reward_amount").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertReferralSchema = createInsertSchema(referrals).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type Referral = typeof referrals.$inferSelect;
+export type InsertReferral = z.infer<typeof insertReferralSchema>;
+
 export const insertUserSchema = createInsertSchema(users).pick({
   username: true,
   email: true,
@@ -182,7 +208,9 @@ export const insertUserSchema = createInsertSchema(users).pick({
   role: true,
   businessId: true,
   permissions: true,
-}).partial({ role: true, businessId: true, permissions: true });
+  whatsappNumber: true,
+  referralCode: true,
+}).partial({ role: true, businessId: true, permissions: true, whatsappNumber: true, referralCode: true });
 
 export const insertBusinessSchema = createInsertSchema(businesses).pick({
   name: true,
@@ -280,6 +308,8 @@ export const insertBookingSchema = createInsertSchema(bookings).pick({
   stripePaymentIntentId: true,
   stripeSessionId: true,
   paymentStatus: true,
+  nationality: true,
+  checkedIn: true,
 }).partial({
   customerId: true,
   customerEmail: true,
@@ -290,7 +320,9 @@ export const insertBookingSchema = createInsertSchema(bookings).pick({
   transactionHash: true,
   stripePaymentIntentId: true,
   stripeSessionId: true,
-  paymentStatus: true
+  paymentStatus: true,
+  nationality: true,
+  checkedIn: true,
 });
 
 export const insertSeatHoldSchema = createInsertSchema(seatHolds).pick({
@@ -326,8 +358,34 @@ export const insertMediaSchema = createInsertSchema(media).pick({
   name: true,
   mimeType: true,
   content: true,
+  url: true,
   size: true,
 });
+
+export const coupons = pgTable("coupons", {
+  id: serial("id").primaryKey(),
+  code: text("code").notNull().unique(),
+  discountType: text("discount_type").notNull(), // 'percent' or 'fixed'
+  discountValue: integer("discount_value").notNull(),
+  expirationDate: timestamp("expiration_date"),
+  usageLimit: integer("usage_limit"),
+  usageCount: integer("usage_count").default(0),
+  isActive: boolean("is_active").default(true),
+  businessId: integer("business_id").references(() => businesses.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertCouponSchema = createInsertSchema(coupons).pick({
+  code: true,
+  discountType: true,
+  discountValue: true,
+  expirationDate: true,
+  usageLimit: true,
+  businessId: true,
+});
+
+export type Coupon = typeof coupons.$inferSelect;
+export type InsertCoupon = z.infer<typeof insertCouponSchema>;
 
 export const insertAvailabilityOverrideSchema = createInsertSchema(availabilityOverrides).pick({
   tourId: true,

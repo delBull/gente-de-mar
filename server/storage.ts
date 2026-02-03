@@ -1,18 +1,24 @@
 import {
-  users, businesses, tours, transactions, retentionConfig, customers, bookings, seatHolds, ticketRedemptions, payments, media, availabilityOverrides,
+  users, businesses, tours, transactions, retentionConfig, customers, bookings, seatHolds, ticketRedemptions, payments, media, availabilityOverrides, coupons, referrals,
   type User, type InsertUser, type Business, type InsertBusiness, type Tour, type InsertTour, type Transaction, type InsertTransaction,
   type RetentionConfig, type InsertRetentionConfig, type Customer, type InsertCustomer,
   type Booking, type InsertBooking, type SeatHold, type InsertSeatHold, type TicketRedemption, type InsertTicketRedemption,
-  type Payment, type InsertPayment, type Media, type InsertMedia, type AvailabilityOverride, type InsertAvailabilityOverride
+  type Payment, type InsertPayment, type Media, type InsertMedia, type AvailabilityOverride, type InsertAvailabilityOverride,
+  type Coupon, type InsertCoupon, type Referral, type InsertReferral
 } from "../shared/schema.js";
-import { eq, desc, and, sql } from "drizzle-orm";
+import { eq, desc, and, sql, gte, lte, lt } from "drizzle-orm";
 import { db } from "./db.js";
 import { generateAlphanumericCode } from "../shared/utils.js";
 
 export interface IStorage {
+  // Business
+  getBusiness(id: number): Promise<Business | undefined>;
+  updateBusiness(id: number, business: Partial<Business>): Promise<Business>;
+
   // Users
   getUser(id: number): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
+  getUserByReferralCode(code: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
   updateUser(id: number, user: Partial<User>): Promise<User>;
   authenticateUser(username: string, password: string): Promise<User | null>;
@@ -49,6 +55,7 @@ export interface IStorage {
   updateBooking(id: number, booking: Partial<Booking>): Promise<Booking | undefined>;
   createBooking(booking: InsertBooking & { qrCode: string; alphanumericCode: string; status: string; reservedUntil: Date }): Promise<Booking>;
   redeemTicket(bookingId: number, redeemedBy: number, method: string, notes?: string): Promise<TicketRedemption>;
+  checkInBooking(id: number): Promise<Booking | undefined>;
 
   // Payments
   getPayment(id: number): Promise<Payment | undefined>;
@@ -100,6 +107,16 @@ export interface IStorage {
   getAvailabilityOverrides(tourId: number): Promise<AvailabilityOverride[]>;
   createAvailabilityOverride(override: InsertAvailabilityOverride): Promise<AvailabilityOverride>;
   deleteAvailabilityOverride(id: number): Promise<void>;
+  getPendingBookingsOlderThan(date: Date): Promise<Booking[]>;
+
+  // Coupons
+  getCouponByCode(code: string): Promise<Coupon | undefined>;
+  createCoupon(coupon: InsertCoupon): Promise<Coupon>;
+  incrementCouponUsage(id: number): Promise<void>;
+
+  // Referrals
+  createReferral(referral: InsertReferral): Promise<Referral>;
+  getReferralsByUser(userId: number): Promise<Referral[]>;
 }
 
 export class MemStorage implements IStorage {
@@ -107,11 +124,14 @@ export class MemStorage implements IStorage {
   private tours: Map<number, Tour>;
   private transactions: Map<number, Transaction>;
   private bookings: Map<number, Booking>;
+  private businesses: Map<number, Business>;
   private seatHolds: Map<number, SeatHold>;
   private ticketRedemptions: Map<number, TicketRedemption>;
   private payments: Map<number, Payment>;
   private media: Map<number, Media>;
   private availabilityOverrides: Map<number, AvailabilityOverride>;
+  private coupons: Map<number, Coupon>;
+  private referrals: Map<number, Referral>;
   private retentionConfigData: RetentionConfig;
   private currentUserId: number;
   private currentTourId: number;
@@ -119,23 +139,30 @@ export class MemStorage implements IStorage {
   private currentBookingId: number;
   private currentSeatHoldId: number;
   private currentPaymentId: number;
+  private currentCouponId: number;
+  private currentReferralId: number;
 
   constructor() {
     this.users = new Map();
     this.tours = new Map();
     this.transactions = new Map();
     this.bookings = new Map();
+    this.businesses = new Map();
     this.seatHolds = new Map();
     this.ticketRedemptions = new Map();
     this.payments = new Map();
     this.media = new Map();
     this.availabilityOverrides = new Map();
+    this.coupons = new Map();
+    this.referrals = new Map();
     this.currentUserId = 1;
     this.currentTourId = 1;
     this.currentTransactionId = 1;
     this.currentBookingId = 1;
     this.currentSeatHoldId = 1;
     this.currentPaymentId = 1;
+    this.currentCouponId = 1;
+    this.currentReferralId = 1;
 
     // Initialize default retention config
     this.retentionConfigData = {
@@ -165,7 +192,9 @@ export class MemStorage implements IStorage {
       businessId: null,
       permissions: ["all"],
       payoutConfig: null,
-      lastLogin: null
+      lastLogin: null,
+      whatsappNumber: null,
+      referralCode: null
     };
 
     const sellerUser: User = {
@@ -180,7 +209,9 @@ export class MemStorage implements IStorage {
       businessId: 1,
       permissions: ["view_tour_metrics", "manage_my_tours"],
       payoutConfig: null,
-      lastLogin: null
+      lastLogin: null,
+      whatsappNumber: null,
+      referralCode: null
     };
 
     const providerUser: User = {
@@ -195,7 +226,9 @@ export class MemStorage implements IStorage {
       businessId: 1,
       permissions: ["redeem_tickets", "view_redemptions"],
       payoutConfig: null,
-      lastLogin: null
+      lastLogin: null,
+      whatsappNumber: null,
+      referralCode: null
     };
 
     this.users.set(1, masterAdmin);
@@ -396,6 +429,34 @@ export class MemStorage implements IStorage {
 
     sampleTransactions.forEach(transaction => this.transactions.set(transaction.id, transaction));
     this.currentTransactionId = 4;
+
+    // Initialize mock business
+    this.businesses.set(1, {
+      id: 1,
+      name: "Gente de Mar",
+      description: "Operador turístico premium",
+      contactEmail: "contacto@gentedemar.com",
+      contactPhone: null,
+      address: null,
+      logo: null,
+      isActive: true,
+      stripeAccountId: null,
+      stripeOnboardingCompleted: false,
+      createdAt: new Date()
+    });
+  }
+
+  // Business
+  async getBusiness(id: number): Promise<Business | undefined> {
+    return this.businesses.get(id);
+  }
+
+  async updateBusiness(id: number, businessUpdate: Partial<Business>): Promise<Business> {
+    const existing = this.businesses.get(id);
+    if (!existing) throw new Error("Business not found");
+    const updated = { ...existing, ...businessUpdate };
+    this.businesses.set(id, updated);
+    return updated;
   }
 
   // Users
@@ -405,6 +466,10 @@ export class MemStorage implements IStorage {
 
   async getUserByUsername(username: string): Promise<User | undefined> {
     return Array.from(this.users.values()).find(user => user.username === username);
+  }
+
+  async getUserByReferralCode(code: string): Promise<User | undefined> {
+    return Array.from(this.users.values()).find(u => u.referralCode === code);
   }
 
   async authenticateUser(username: string, password: string): Promise<User | null> {
@@ -427,9 +492,11 @@ export class MemStorage implements IStorage {
       isActive: true,
       createdAt: new Date(),
       lastLogin: null,
-      businessId: insertUser.businessId || null,
-      permissions: insertUser.permissions || null,
-      payoutConfig: null
+      businessId: insertUser.businessId ?? null,
+      permissions: insertUser.permissions ?? null,
+      payoutConfig: null, // Default empty
+      whatsappNumber: insertUser.whatsappNumber || null,
+      referralCode: insertUser.referralCode || null
     };
     this.users.set(id, user);
     return user;
@@ -680,6 +747,9 @@ export class MemStorage implements IStorage {
       rescheduleReason: null,
       rescheduleToken: null,
       createdAt: new Date(),
+      nationality: null,
+      checkedIn: false,
+      checkedInAt: null
     };
     this.bookings.set(booking.id, booking);
     return booking;
@@ -831,6 +901,8 @@ export class MemStorage implements IStorage {
     const id = Array.from(this.media.values()).length + 1;
     const media: Media = {
       ...insertMedia,
+      content: insertMedia.content ?? null,
+      url: insertMedia.url ?? null,
       id,
       createdAt: new Date()
     };
@@ -840,6 +912,77 @@ export class MemStorage implements IStorage {
 
   async deleteMedia(id: number): Promise<void> {
     this.media.delete(id);
+  }
+
+  async checkInBooking(id: number): Promise<Booking | undefined> {
+    const booking = this.bookings.get(id);
+    if (!booking) return undefined;
+    const updatedBooking = { ...booking, checkedIn: true, checkedInAt: new Date() };
+    this.bookings.set(id, updatedBooking);
+    return updatedBooking;
+  }
+
+  async getBookingsByDateRange(start: Date, end: Date): Promise<Booking[]> {
+    return Array.from(this.bookings.values()).filter(booking =>
+      booking.bookingDate >= start && booking.bookingDate <= end && booking.status === 'confirmed'
+    );
+  }
+
+  async getPendingBookingsOlderThan(date: Date): Promise<Booking[]> {
+    return Array.from(this.bookings.values()).filter(booking =>
+      booking.createdAt && booking.createdAt < date && booking.status === 'pending_payment'
+    );
+  }
+
+  // Coupons Implementation
+  async getCouponByCode(code: string): Promise<Coupon | undefined> {
+    // Basic implementation for testing, assumes no coupons in memory yet
+    return undefined;
+  }
+
+  async createCoupon(insertCoupon: InsertCoupon): Promise<Coupon> {
+    const id = 1; // logical id for mock
+    const coupon: Coupon = {
+      ...insertCoupon,
+      id,
+      usageCount: 0,
+      isActive: true,
+      createdAt: new Date(),
+      expirationDate: insertCoupon.expirationDate ? new Date(insertCoupon.expirationDate) : null,
+      discountValue: insertCoupon.discountValue ?? 0,
+      usageLimit: insertCoupon.usageLimit ?? null,
+      businessId: insertCoupon.businessId ?? null
+    };
+    return coupon;
+  }
+
+  async incrementCouponUsage(id: number): Promise<void> {
+    const coupon = this.coupons.get(id);
+    if (coupon) {
+      this.coupons.set(id, {
+        ...coupon,
+        usageCount: (coupon.usageCount || 0) + 1
+      });
+    }
+  }
+
+  async createReferral(referral: InsertReferral): Promise<Referral> {
+    const id = this.currentReferralId++;
+    const newReferral: Referral = {
+      ...referral,
+      id,
+      referredUserId: referral.referredUserId ?? null, // Ensure explicitly nullable if undefined
+      status: referral.status || "pending",
+      createdAt: new Date(),
+    };
+    this.referrals.set(id, newReferral);
+    return newReferral;
+  }
+
+  async getReferralsByUser(userId: number): Promise<Referral[]> {
+    return Array.from(this.referrals.values()).filter(
+      (referral) => referral.referrerId === userId
+    );
   }
 }
 
@@ -949,14 +1092,7 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
-  async getUsers(): Promise<User[]> {
-    try {
-      return await db.select().from(users);
-    } catch (error) {
-      console.error("Error getting users:", error);
-      return [];
-    }
-  }
+
 
   async getUser(id: number): Promise<User | undefined> {
     try {
@@ -966,6 +1102,22 @@ export class DatabaseStorage implements IStorage {
       console.error("Error getting user:", error);
       return undefined;
     }
+  }
+
+  async getBusiness(id: number): Promise<Business | undefined> {
+    try {
+      const [business] = await db.select().from(businesses).where(eq(businesses.id, id));
+      return business;
+    } catch (error) {
+      console.error("Error getting business:", error);
+      return undefined;
+    }
+  }
+
+  async updateBusiness(id: number, businessUpdate: Partial<Business>): Promise<Business> {
+    const [updated] = await db.update(businesses).set(businessUpdate).where(eq(businesses.id, id)).returning();
+    if (!updated) throw new Error("Business not found");
+    return updated;
   }
 
   async getUserByUsername(username: string): Promise<User | undefined> {
@@ -978,6 +1130,16 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
+  async getUserByReferralCode(code: string): Promise<User | undefined> {
+    try {
+      const [user] = await db.select().from(users).where(eq(users.referralCode, code));
+      return user;
+    } catch (error) {
+      console.error("Error getting user by referral code:", error);
+      return undefined;
+    }
+  }
+
   async createUser(insertUser: InsertUser): Promise<User> {
     try {
       const [user] = await db.insert(users).values(insertUser).returning();
@@ -985,6 +1147,15 @@ export class DatabaseStorage implements IStorage {
     } catch (error) {
       console.error("Error creating user:", error);
       throw error;
+    }
+  }
+
+  async getUsers(): Promise<User[]> {
+    try {
+      return await db.select().from(users);
+    } catch (error) {
+      console.error("Error getting users:", error);
+      return [];
     }
   }
 
@@ -1285,6 +1456,8 @@ export class DatabaseStorage implements IStorage {
       throw error;
     }
   }
+
+
 
   async updatePayment(id: number, paymentUpdate: Partial<Payment>): Promise<Payment | undefined> {
     try {
@@ -1610,6 +1783,86 @@ export class DatabaseStorage implements IStorage {
     } catch (error) {
       console.error("Error deleting availability override:", error);
     }
+  }
+
+  async checkInBooking(id: number): Promise<Booking | undefined> {
+    try {
+      const [updatedBooking] = await db
+        .update(bookings)
+        .set({ checkedIn: true, checkedInAt: new Date() })
+        .where(eq(bookings.id, id))
+        .returning();
+      return updatedBooking;
+      return updatedBooking;
+    } catch (error) {
+      console.error("Error checking in booking:", error);
+      return undefined;
+    }
+  }
+
+  async getBookingsByDateRange(start: Date, end: Date): Promise<Booking[]> {
+    try {
+      return await db.select().from(bookings).where(
+        and(
+          gte(bookings.bookingDate, start),
+          lte(bookings.bookingDate, end),
+          eq(bookings.status, 'confirmed')
+        )
+      );
+    } catch (error) {
+      console.error("Error fetching bookings by date range:", error);
+      return [];
+    }
+  }
+
+  async getPendingBookingsOlderThan(date: Date): Promise<Booking[]> {
+    try {
+      return await db.select().from(bookings).where(
+        and(
+          lt(bookings.createdAt, date),
+          eq(bookings.status, 'pending_payment')
+        )
+      );
+    } catch (error) {
+      console.error("Error fetching pending bookings:", error);
+      return [];
+    }
+  }
+
+  // Coupons Implementation
+  async getCouponByCode(code: string): Promise<Coupon | undefined> {
+    try {
+      const [coupon] = await db.select().from(coupons).where(eq(coupons.code, code));
+      return coupon;
+    } catch (error) {
+      console.error("Error getting coupon:", error);
+      return undefined;
+    }
+  }
+
+  async createCoupon(insertCoupon: InsertCoupon): Promise<Coupon> {
+    const [coupon] = await db.insert(coupons).values(insertCoupon).returning();
+    return coupon;
+  }
+
+  async incrementCouponUsage(id: number): Promise<void> {
+    try {
+      await db.update(coupons)
+        .set({ usageCount: sql`${coupons.usageCount} + 1` })
+        .where(eq(coupons.id, id));
+    } catch (error) {
+      console.error("Error incrementing coupon usage:", error);
+    }
+  }
+
+  // Referrals Implementation
+  async createReferral(referral: InsertReferral): Promise<Referral> {
+    const [newReferral] = await db.insert(referrals).values(referral).returning();
+    return newReferral;
+  }
+
+  async getReferralsByUser(userId: number): Promise<Referral[]> {
+    return await db.select().from(referrals).where(eq(referrals.referrerId, userId));
   }
 }
 

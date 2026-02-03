@@ -1,6 +1,7 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes.js";
 import { setupVite, serveStatic, log } from "./vite.js";
+import { startCronJobs } from "./cron.js";
 import * as dotenv from "dotenv";
 import fs from "fs";
 import path from "path";
@@ -91,6 +92,8 @@ async function initializeApp() {
     try {
       log("starting server initialization...");
       const server = await registerRoutes(app);
+      // Start background jobs
+      startCronJobs();
 
       if (app.get("env") === "development") {
         await setupVite(app, server);

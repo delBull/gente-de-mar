@@ -8,6 +8,8 @@ import PaymentFlowChart from "@/components/payment-flow-chart";
 import RecentTransactions from "@/components/recent-transactions";
 import ActiveTours from "@/components/active-tours";
 import RetentionConfig from "@/components/retention-config";
+import ReferralsCard from "@/components/referrals-card";
+import StripeConnectCard from "@/components/stripe-connect-card";
 import { Bell, Smartphone, Monitor } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -110,6 +112,8 @@ export default function Dashboard() {
                 config={retentionConfig as any}
                 isLoading={isLoadingConfig}
               />
+              <ReferralsCard />
+              <StripeConnectCard />
             </div>
           </main>
         ) : (
@@ -140,6 +144,8 @@ export default function Dashboard() {
                 config={retentionConfig as any}
                 isLoading={isLoadingConfig}
               />
+              <ReferralsCard />
+              <StripeConnectCard />
             </div>
           </main>
         )}

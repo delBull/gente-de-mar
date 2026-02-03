@@ -688,7 +688,14 @@ export default function Ticket() {
                     <div className="space-y-2 text-sm text-gray-600">
                       <p>📞 +52 322 123 4567</p>
                       <p>📧 info@bookeros.com</p>
-                      <p>💬 WhatsApp disponible 24/7</p>
+                      <Button
+                        variant="link"
+                        className="p-0 h-auto text-cyan-700 font-semibold"
+                        onClick={() => window.open('https://wa.me/523221234567?text=Hola,%20necesito%20ayuda%20con%20mi%20reserva', '_blank')}
+                      >
+                        <WhatsappIcon size={16} round className="mr-1 inline" />
+                        Contactar por WhatsApp
+                      </Button>
                     </div>
                   </motion.div>
                 </div>

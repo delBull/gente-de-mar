@@ -62,6 +62,12 @@ export default function Booking() {
   const [specialRequests, setSpecialRequests] = useState("");
   const [healthIssues, setHealthIssues] = useState("");
 
+  // Coupon State
+  const [couponCode, setCouponCode] = useState("");
+  const [appliedCoupon, setAppliedCoupon] = useState<any>(null);
+  const [couponError, setCouponError] = useState("");
+  const [isValidatingCoupon, setIsValidatingCoupon] = useState(false);
+
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -112,9 +118,46 @@ export default function Booking() {
     },
   });
 
+  const handleValidateCoupon = async () => {
+    if (!couponCode.trim()) return;
+    setIsValidatingCoupon(true);
+    setCouponError("");
+    setAppliedCoupon(null);
+
+    try {
+      const res = await apiRequest("POST", "/api/coupons/validate", { code: couponCode });
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.message || "Cupón inválido");
+      }
+      const coupon = await res.json();
+      setAppliedCoupon(coupon);
+      toast({
+        title: "Cupón aplicado",
+        description: `Descuento de ${coupon.discountType === 'percent' ? `${coupon.discountValue}%` : `$${coupon.discountValue}`} aplicado.`,
+      });
+    } catch (err: any) {
+      setCouponError(err.message);
+      setAppliedCoupon(null);
+    } finally {
+      setIsValidatingCoupon(false);
+    }
+  };
+
   const totalGuests = adults + children;
   const pricePerPerson = tour ? parseFloat(tour.price) : 0;
-  const totalPrice = pricePerPerson * totalGuests;
+  const subtotalPrice = pricePerPerson * totalGuests;
+
+  let discountAmount = 0;
+  if (appliedCoupon) {
+    if (appliedCoupon.discountType === 'percent') {
+      discountAmount = subtotalPrice * (appliedCoupon.discountValue / 100);
+    } else {
+      discountAmount = Math.min(subtotalPrice, appliedCoupon.discountValue);
+    }
+  }
+
+  const totalPrice = Math.max(0, subtotalPrice - discountAmount);
 
   const tomorrow = addDays(new Date(), 1);
 
@@ -129,29 +172,6 @@ export default function Booking() {
     if (date && (isTomorrow(date) || isAfter(date, tomorrow)) && !isBlocked(date)) {
       setSelectedDate(date);
     }
-  };
-
-  const handleBooking = () => {
-    if (!selectedDate || !customerName || !customerPhone) {
-      toast({
-        title: "Información incompleta",
-        description: "Por favor completa todos los campos requeridos",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    bookingMutation.mutate({
-      tourId: tourId!,
-      bookingDate: selectedDate,
-      adults,
-      children,
-      customerName,
-      customerEmail,
-      customerPhone,
-      specialRequests: `${specialRequests}${healthIssues ? `\nProblemas de salud: ${healthIssues}` : ''}`,
-      totalAmount: totalPrice.toString(),
-    });
   };
 
   const getDefaultImage = (tourName: string) => {
@@ -193,7 +213,6 @@ export default function Booking() {
         </div>
       </div>
     );
-
   }
 
   return (
@@ -496,7 +515,7 @@ export default function Booking() {
                   <div className="flex justify-between items-center">
                     <span className="font-medium">Total</span>
                     <span className="text-xl font-bold text-blue-600">
-                      {formatPrice(totalPrice)}
+                      {formatPrice(subtotalPrice)}
                     </span>
                   </div>
                   <p className="text-sm text-gray-600">
@@ -627,7 +646,7 @@ export default function Booking() {
                   <div className="flex justify-between items-center">
                     <span className="text-lg font-semibold text-black">Total:</span>
                     <span className="text-xl font-bold text-blue-600">
-                      {formatPrice(totalPrice)}
+                      {formatPrice(subtotalPrice)}
                     </span>
                   </div>
                   <p className="text-sm text-gray-500 text-right">
@@ -684,9 +703,51 @@ export default function Booking() {
                   <span className="text-gray-600">Contacto:</span>
                   <span className="font-medium text-black">{customerName}</span>
                 </div>
-                <div className="border-t pt-3">
-                  <div className="flex justify-between items-center">
-                    <span className="text-lg font-bold text-black">Total:</span>
+
+                {/* Coupon Input */}
+                <div className="pt-3 border-t border-gray-200">
+                  <Label htmlFor="coupon" className="text-sm font-medium mb-1.5 block">¿Tienes un cupón?</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      id="coupon"
+                      placeholder="Ingresa tu código"
+                      value={couponCode}
+                      onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                      className="bg-white/50"
+                      disabled={!!appliedCoupon}
+                    />
+                    {appliedCoupon ? (
+                      <Button variant="outline" onClick={() => { setAppliedCoupon(null); setCouponCode(""); }} className="bg-red-50 text-red-600 hover:bg-red-100 border-red-200">
+                        Quitar
+                      </Button>
+                    ) : (
+                      <Button onClick={handleValidateCoupon} disabled={!couponCode || isValidatingCoupon} variant="secondary">
+                        {isValidatingCoupon ? "..." : "Aplicar"}
+                      </Button>
+                    )}
+                  </div>
+                  {couponError && <p className="text-xs text-red-500 mt-1">{couponError}</p>}
+                  {appliedCoupon && (
+                    <p className="text-xs text-green-600 mt-1 flex items-center">
+                      <Check className="w-3 h-3 mr-1" />
+                      Cupón {appliedCoupon.code} aplicado correctamente
+                    </p>
+                  )}
+                </div>
+
+                <div className="border-t pt-3 space-y-2">
+                  <div className="flex justify-between items-center text-sm text-gray-600">
+                    <span>Subtotal:</span>
+                    <span>{formatPrice(subtotalPrice)}</span>
+                  </div>
+                  {appliedCoupon && (
+                    <div className="flex justify-between items-center text-sm text-green-600 font-medium">
+                      <span>Descuento:</span>
+                      <span>-{formatPrice(discountAmount)}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between items-center pt-2">
+                    <span className="text-lg font-bold text-black">Total a Pagar:</span>
                     <span className="text-2xl font-bold text-blue-600">
                       {formatPrice(totalPrice)}
                     </span>
@@ -725,6 +786,8 @@ export default function Booking() {
                       customerPhone,
                       specialRequests: `${specialRequests}${healthIssues ? `\nProblemas de salud: ${healthIssues}` : ''}`,
                       totalAmount: totalPrice.toString(),
+                      couponCode: appliedCoupon?.type === 'coupon' ? appliedCoupon.code : undefined,
+                      referralCode: appliedCoupon?.type === 'referral' ? appliedCoupon.code : undefined
                     };
 
                     setLocation(`/payment/${encodeURIComponent(JSON.stringify(bookingPayload))}`);
