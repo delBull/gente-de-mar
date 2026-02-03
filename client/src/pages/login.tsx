@@ -124,9 +124,7 @@ export default function Login() {
           <div className="mt-6 text-center text-sm text-muted-foreground space-y-1">
             <p>Credenciales:</p>
             <div className="text-xs space-y-1">
-              <p><strong>Master:</strong> Dario / bookeros2026</p>
-              <p><strong>Business:</strong> Business / tour2025</p>
-              <p><strong>Manager:</strong> Manager / admin</p>
+              <p><strong>Master Admin:</strong> delbull / admin2026</p>
             </div>
           </div>
         </CardContent>

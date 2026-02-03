@@ -136,9 +136,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
         <div className="text-sm text-gray-500 border-t pt-4">
           <p className="font-medium mb-2">Credenciales:</p>
           <div className="space-y-1 text-xs">
-            <p><strong>Master:</strong> Dario / bookeros2026</p>
-            <p><strong>Business:</strong> Business / tour2025</p>
-            <p><strong>Manager:</strong> Manager / admin</p>
+            <p><strong>Master Admin:</strong> delbull / admin2026</p>
           </div>
         </div>
       </DialogContent>
