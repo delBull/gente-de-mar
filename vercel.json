@@ -1,11 +1,11 @@
 {
   "version": 2,
-  "functions": {
-    "api/index.ts": {
-      "maxDuration": 10,
-      "includeFiles": "dist/public/**"
+  "builds": [
+    {
+      "src": "package.json",
+      "use": "@vercel/node"
     }
-  },
+  ],
   "rewrites": [
     {
       "source": "/(.*)",
