@@ -26,6 +26,7 @@ import NotFound from "@/pages/not-found";
 import Login from "@/pages/login";
 import Welcome from "@/pages/welcome";
 import Guide from "@/pages/guide";
+import Users from "@/pages/users";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -54,6 +55,7 @@ function Router() {
       <Route path="/redeem-ticket" component={isAuthenticated ? RedeemTicket : Login} />
       <Route path="/check-in" component={isAuthenticated ? CheckIn : Login} />
       <Route path="/guide" component={isAuthenticated ? Guide : Login} />
+      <Route path="/users" component={isAuthenticated ? Users : Login} />
 
       {/* Customer Booking Routes - Public */}
       <Route path="/customer" component={CustomerHome} />

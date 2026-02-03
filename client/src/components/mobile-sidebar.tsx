@@ -30,20 +30,22 @@ import {
   Globe,
   ShoppingCart,
   Camera,
-  BookOpen
+  BookOpen,
+  Users as UsersIcon
 } from "lucide-react";
 
 const navigation = [
   { name: "Panel Control", href: "/dashboard", icon: LayoutDashboard, section: "dashboard" },
-  { name: "Tours", href: "/tours", icon: MapPin, section: "tours" },
-  { name: "Reservaciones", href: "/reservations", icon: Calendar, section: "reservations" },
-  { name: "Agenda", href: "/agenda", icon: Calendar, section: "reservations" },
-  { name: "Pagos", href: "/payments", icon: CreditCard, section: "payments" },
-  { name: "Reportes", href: "/reports", icon: BarChart3, section: "reports" },
-  { name: "Portal de Reservas", href: "/customer", icon: ShoppingCart, section: "customer" },
-  { name: "Configuración", href: "/settings", icon: Settings, section: "settings" },
+  { name: "Tours", href: "/tours", icon: MapPin, section: "tours" }, // hidden for provider
+  { name: "Reservaciones", href: "/reservations", icon: Calendar, section: "reservations" }, // hidden for provider
+  { name: "Agenda", href: "/agenda", icon: Calendar, section: "reservations" }, // hidden for provider
+  { name: "Pagos", href: "/payments", icon: CreditCard, section: "payments" }, // hidden for provider
+  { name: "Reportes", href: "/reports", icon: BarChart3, section: "reports" }, // hidden for provider
+  { name: "Portal de Reservas", href: "/customer", icon: ShoppingCart, section: "customer" }, // hidden for provider
+  { name: "Configuración", href: "/settings", icon: Settings, section: "settings" }, // hidden for provider
+  { name: "Usuarios", href: "/users", icon: UsersIcon, section: "master_admin" },
   { name: "Guía de Uso", href: "/guide", icon: BookOpen, section: "dashboard" },
-  { name: "Canjear Ticket", href: "/redeem", icon: QrCode, section: "redeem" },
+  { name: "Canjear Ticket", href: "/redeem", icon: QrCode, section: "redeem" }, // primary for provider
 ];
 
 export default function MobileSidebar() {

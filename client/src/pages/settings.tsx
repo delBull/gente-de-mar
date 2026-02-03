@@ -65,6 +65,12 @@ export default function Settings() {
     }
   });
 
+  const [passwordData, setPasswordData] = useState({
+    currentPassword: "",
+    newPassword: "",
+    confirmPassword: ""
+  });
+
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -146,6 +152,69 @@ export default function Settings() {
     updateRetentionMutation.mutate(retentionData);
   };
 
+  const changePasswordMutation = useMutation({
+    mutationFn: async (data: { currentPassword: string; newPassword: string }) => {
+      const response = await apiRequest("POST", "/api/users/change-password", data);
+      return response.json();
+    },
+    onSuccess: (data) => {
+      toast({
+        title: "Contraseña actualizada",
+        description: "Tu contraseña ha sido cambiada exitosamente.",
+      });
+      // Update local storage
+      localStorage.setItem("auth_user", JSON.stringify(data.user));
+      refetchUser();
+      // Clear password fields
+      setPasswordData({
+        currentPassword: "",
+        newPassword: "",
+        confirmPassword: ""
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Error al cambiar la contraseña",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handlePasswordChange = () => {
+    if (!passwordData.currentPassword || !passwordData.newPassword) {
+      toast({
+        title: "Error",
+        description: "Por favor completa todos los campos",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (passwordData.newPassword !== passwordData.confirmPassword) {
+      toast({
+        title: "Error",
+        description: "Las contraseñas no coinciden",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (passwordData.newPassword.length < 6) {
+      toast({
+        title: "Error",
+        description: "La contraseña debe tener al menos 6 caracteres",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    changePasswordMutation.mutate({
+      currentPassword: passwordData.currentPassword,
+      newPassword: passwordData.newPassword
+    });
+  };
+
   return (
     <div className="flex min-h-screen bg-gray-50">
       <MobileSidebar />
@@ -163,19 +232,26 @@ export default function Settings() {
         <main className="p-4 md:p-6 space-y-4 md:space-y-6 max-w-7xl mx-auto">
           <Tabs defaultValue="profile" className="space-y-4 md:space-y-6">
             {/* Desktop Navigation */}
-            <TabsList className="hidden md:grid w-full grid-cols-4">
+            <TabsList className="hidden md:grid w-full grid-cols-5">
               <TabsTrigger value="profile">Perfil</TabsTrigger>
+              <TabsTrigger value="security">Seguridad</TabsTrigger>
               <TabsTrigger value="notifications">Notificaciones</TabsTrigger>
               <TabsTrigger value="payments">Pagos</TabsTrigger>
               <TabsTrigger value="retention">Retenciones</TabsTrigger>
             </TabsList>
 
             {/* Mobile Navigation - Solo iconos */}
-            <TabsList className="md:hidden grid w-full grid-cols-4 gap-2">
+            <TabsList className="md:hidden grid w-full grid-cols-5 gap-2">
               <TabsTrigger value="profile" className="relative group">
                 <User className="w-5 h-5" />
                 <div className="absolute -top-10 left-1/2 transform -translate-x-1/2 bg-black text-white text-xs rounded px-2 py-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap">
                   Perfil
+                </div>
+              </TabsTrigger>
+              <TabsTrigger value="security" className="relative group">
+                <Shield className="w-5 h-5" />
+                <div className="absolute -top-10 left-1/2 transform -translate-x-1/2 bg-black text-white text-xs rounded px-2 py-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap">
+                  Seguridad
                 </div>
               </TabsTrigger>
               <TabsTrigger value="notifications" className="relative group">
@@ -276,6 +352,68 @@ export default function Settings() {
                     <Save className="w-4 h-4 mr-2" />
                     Guardar Cambios
                   </Button>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* Security Tab - Password Change */}
+            <TabsContent value="security">
+              <Card className="bg-gray-800 border border-gray-700 shadow-sm">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-white">
+                    <Shield className="w-5 h-5 text-white" />
+                    Cambiar Contraseña
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="currentPassword" className="text-white">Contraseña Actual</Label>
+                      <Input
+                        id="currentPassword"
+                        type="password"
+                        value={passwordData.currentPassword}
+                        onChange={(e) => setPasswordData(prev => ({ ...prev, currentPassword: e.target.value }))}
+                        className="bg-transparent border-gray-300 focus:border-blue-500 text-white"
+                        placeholder="••••••••"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="newPassword" className="text-white">Nueva Contraseña</Label>
+                      <Input
+                        id="newPassword"
+                        type="password"
+                        value={passwordData.newPassword}
+                        onChange={(e) => setPasswordData(prev => ({ ...prev, newPassword: e.target.value }))}
+                        className="bg-transparent border-gray-300 focus:border-blue-500 text-white"
+                        placeholder="Mínimo 6 caracteres"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="confirmPassword" className="text-white">Confirmar Nueva Contraseña</Label>
+                      <Input
+                        id="confirmPassword"
+                        type="password"
+                        value={passwordData.confirmPassword}
+                        onChange={(e) => setPasswordData(prev => ({ ...prev, confirmPassword: e.target.value }))}
+                        className="bg-transparent border-gray-300 focus:border-blue-500 text-white"
+                        placeholder="Repite la nueva contraseña"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end">
+                    <Button
+                      onClick={handlePasswordChange}
+                      disabled={changePasswordMutation.isPending}
+                      className="bg-blue-600 hover:bg-blue-700 text-white"
+                    >
+                      <Save className="w-4 h-4 mr-2" />
+                      {changePasswordMutation.isPending ? "Guardando..." : "Actualizar Contraseña"}
+                    </Button>
+                  </div>
                 </CardContent>
               </Card>
             </TabsContent>

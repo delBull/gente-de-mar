@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { apiRequest } from "@/lib/queryClient";
 
-type UserRole = 'business' | 'manager' | 'master_admin';
+type UserRole = 'business' | 'manager' | 'master_admin' | 'provider' | 'seller';
 
 export interface User {
   id: number;
@@ -183,10 +183,26 @@ export function useAuth() {
   const canAccessSection = (section: string): boolean => {
     if (!isAuthenticated || !user) return false;
 
-    const role: UserRole = user.role;
+    const role = user.role;
 
     // Master Admin puede acceder a todo
     if (role === 'master_admin') return true;
+
+    // Provider role - muy limitado, solo dashboard y redeem
+    if (role === 'provider') {
+      return section === 'dashboard' || section === 'redeem';
+    }
+
+    // Seller role - más acceso pero limitado
+    if (role === 'seller') {
+      return [
+        'dashboard',
+        'tours',
+        'reservations',
+        'reports',
+        'customer'
+      ].includes(section);
+    }
 
     switch (section) {
       case 'dashboard':
@@ -196,7 +212,7 @@ export function useAuth() {
       case 'reservations':
         return true; // Todos los usuarios autenticados pueden ver reservas
       case 'payments':
-        // Solo Master Admin y Business pueden ver pagos (manager NO)
+        // Solo Master Admin y Business pueden ver pagos
         return role === 'business';
       case 'reports':
         return true; // Todos pueden ver reportes
@@ -205,7 +221,7 @@ export function useAuth() {
       case 'customer':
         return true; // Todos los usuarios autenticados pueden ver el portal de clientes
       case 'settings':
-        return false; // Solo Master Admin puede cambiar configuraciones (ya manejado arriba)
+        return false; // Solo Master Admin puede cambiar configuraciones
       case 'redeem':
         return true; // Todos los usuarios autenticados pueden canjear tickets
       default:

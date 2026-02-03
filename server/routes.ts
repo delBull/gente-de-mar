@@ -1473,6 +1473,148 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ==================== User Management Routes ====================
+  // GET /api/users - List all users (master_admin only)
+  app.get("/api/users", async (req, res) => {
+    try {
+      // @ts-ignore - req.user is set by passport middleware
+      const user = req.user as User | undefined;
+      if (!user || user.role !== 'master_admin') {
+        return res.status(403).json({ message: "Access denied. Master admin only." });
+      }
+
+      const users = await storage.getUsers();
+      // Remove passwords from response
+      const safeUsers = users.map(({ password, ...u }) => u);
+      res.json(safeUsers);
+    } catch (error) {
+      console.error("Error fetching users:", error);
+      res.status(500).json({ message: "Error fetching users" });
+    }
+  });
+
+  // POST /api/users - Create new user (master_admin only)
+  app.post("/api/users", async (req, res) => {
+    try {
+      // @ts-ignore - req.user is set by passport middleware
+      const user = req.user as User | undefined;
+      if (!user || user.role !== 'master_admin') {
+        return res.status(403).json({ message: "Access denied. Master admin only." });
+      }
+
+      const { username, email, password, fullName, role, businessId } = req.body;
+
+      if (!username || !email || !password || !fullName || !role) {
+        return res.status(400).json({ message: "Missing required fields" });
+      }
+
+      // Check if username or email already exists
+      const existingByUsername = await storage.getUserByUsername(username);
+      if (existingByUsername) {
+        return res.status(400).json({ message: "Username already exists" });
+      }
+
+      const existingByEmail = await storage.getUserByEmail(email);
+      if (existingByEmail) {
+        return res.status(400).json({ message: "Email already exists" });
+      }
+
+      const newUser = await storage.createUser({
+        username,
+        email,
+        password,
+        fullName,
+        role,
+        businessId: businessId || null,
+        permissions: role === 'master_admin' ? ['all'] : [],
+        whatsappNumber: null,
+        referralCode: null
+      } as any); // Using 'as any' to bypass schema validation temporarily
+
+      // Remove password from response
+      const { password: _, ...safeUser } = newUser;
+      res.status(201).json(safeUser);
+    } catch (error) {
+      console.error("Error creating user:", error);
+      res.status(500).json({ message: "Error creating user" });
+    }
+  });
+
+  // PATCH /api/users/:id - Update user (master_admin only)
+  app.patch("/api/users/:id", async (req, res) => {
+    try {
+      // @ts-ignore - req.user is set by passport middleware
+      const user = req.user as User | undefined;
+      if (!user || user.role !== 'master_admin') {
+        return res.status(403).json({ message: "Access denied. Master admin only." });
+      }
+
+      const id = parseInt(req.params.id);
+      const updates = req.body;
+
+      // Don't allow updating password through this endpoint
+      if (updates.password) {
+        delete updates.password;
+      }
+
+      const updatedUser = await storage.updateUser(id, updates);
+      const { password: _, ...safeUser } = updatedUser;
+      res.json(safeUser);
+    } catch (error) {
+      console.error("Error updating user:", error);
+      res.status(500).json({ message: "Error updating user" });
+    }
+  });
+
+  // Change password endpoint - all authenticated users
+  app.post("/api/users/change-password", async (req, res) => {
+    try {
+      // @ts-ignore - req.user is set by passport middleware
+      const authenticatedUser = req.user as User | undefined;
+
+      if (!authenticatedUser) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const { currentPassword, newPassword } = req.body;
+      const userId = authenticatedUser.id;
+
+      if (!currentPassword || !newPassword) {
+        return res.status(400).json({ message: "Current and new password required" });
+      }
+
+      if (newPassword.length < 6) {
+        return res.status(400).json({ message: "New password must be at least 6 characters" });
+      }
+
+      // Get current user
+      const users = await storage.getUsers();
+      const user = users.find(u => u.id === userId);
+
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // Verify current password
+      if (user.password !== currentPassword) {
+        return res.status(401).json({ message: "Current password is incorrect" });
+      }
+
+      // Update password
+      const updatedUser = await storage.updateUser(userId, { password: newPassword });
+
+      // Update localStorage for current user
+      const { password: _, ...safeUser } = updatedUser;
+      res.json({
+        message: "Password updated successfully",
+        user: safeUser
+      });
+    } catch (error) {
+      console.error("Error changing password:", error);
+      res.status(500).json({ message: "Error changing password" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

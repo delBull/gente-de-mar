@@ -18,6 +18,7 @@ export interface IStorage {
   // Users
   getUser(id: number): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
+  getUserByEmail(email: string): Promise<User | undefined>;
   getUserByReferralCode(code: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
   updateUser(id: number, user: Partial<User>): Promise<User>;
@@ -182,10 +183,10 @@ export class MemStorage implements IStorage {
     // Create default users with different roles
     const masterAdmin: User = {
       id: 1,
-      username: "Dario",
-      password: "bookeros2026",
-      email: "dario@bookeros.com",
-      fullName: "Dario - BookerOS Admin",
+      username: "delbull",
+      password: "admin2026",
+      email: "admin@bookeros.com",
+      fullName: "delbull",
       role: "master_admin",
       isActive: true,
       createdAt: new Date(),
@@ -197,44 +198,8 @@ export class MemStorage implements IStorage {
       referralCode: null
     };
 
-    const sellerUser: User = {
-      id: 2,
-      username: "Seller",
-      password: "seller2026",
-      email: "seller@bookeros.com",
-      fullName: "Independent Seller",
-      role: "seller",
-      isActive: true,
-      createdAt: new Date(),
-      businessId: 1,
-      permissions: ["view_tour_metrics", "manage_my_tours"],
-      payoutConfig: null,
-      lastLogin: null,
-      whatsappNumber: null,
-      referralCode: null
-    };
-
-    const providerUser: User = {
-      id: 3,
-      username: "Provider",
-      password: "provider2026",
-      email: "provider@bookeros.com",
-      fullName: "Tour Provider",
-      role: "provider",
-      isActive: true,
-      createdAt: new Date(),
-      businessId: 1,
-      permissions: ["redeem_tickets", "view_redemptions"],
-      payoutConfig: null,
-      lastLogin: null,
-      whatsappNumber: null,
-      referralCode: null
-    };
-
     this.users.set(1, masterAdmin);
-    this.users.set(2, sellerUser);
-    this.users.set(3, providerUser);
-    this.currentUserId = 4;
+    this.currentUserId = 2; // Start from 2 for new users
 
     // Create sample tours with realistic Puerto Vallarta prices
     const sampleTours: Tour[] = [
@@ -466,6 +431,10 @@ export class MemStorage implements IStorage {
 
   async getUserByUsername(username: string): Promise<User | undefined> {
     return Array.from(this.users.values()).find(user => user.username === username);
+  }
+
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    return Array.from(this.users.values()).find(u => u.email === email);
   }
 
   async getUserByReferralCode(code: string): Promise<User | undefined> {
@@ -1125,7 +1094,17 @@ export class DatabaseStorage implements IStorage {
       const [user] = await db.select().from(users).where(eq(users.username, username));
       return user;
     } catch (error) {
-      console.error("Error getting user by username:", error);
+      console.error("Error fetching user by username:", error);
+      return undefined;
+    }
+  }
+
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    try {
+      const [user] = await db.select().from(users).where(eq(users.email, email));
+      return user;
+    } catch (error) {
+      console.error("Error fetching user by email:", error);
       return undefined;
     }
   }

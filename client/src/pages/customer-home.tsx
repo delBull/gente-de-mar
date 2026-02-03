@@ -158,9 +158,9 @@ export default function CustomerHome() {
             alt="Ocean Adventure"
             className="absolute inset-0 w-full h-full object-cover scale-105"
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent"></div>
+          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent z-10"></div>
 
-          <div className="absolute inset-0 flex flex-col justify-end px-4 pb-12 sm:pb-24 max-w-7xl mx-auto sm:px-6 lg:px-8">
+          <div className="absolute inset-0 flex flex-col justify-end px-4 pb-16 sm:pb-24 max-w-7xl mx-auto sm:px-6 lg:px-8 z-20">
             <div className="max-w-2xl">
               <Badge className="bg-white/20 backdrop-blur-md text-white border-0 mb-4 px-4 py-1.5 rounded-full text-xs font-semibold tracking-widest uppercase">
                 Bienvenido a BookerOS
@@ -234,20 +234,20 @@ export default function CustomerHome() {
           </div>
         </section>
 
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-8 relative z-10">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
           {/* Quick Categories Slider */}
-          <div className="flex gap-4 overflow-x-auto pb-8 scrollbar-hide">
+          <div className="flex gap-3 sm:gap-4 overflow-x-auto pb-6 sm:pb-8 scrollbar-hide">
             {categories.map((category) => (
               <button
                 key={category.id}
                 onClick={() => setSelectedCategory(category.id)}
-                className={`flex-shrink-0 flex items-center px-6 py-4 rounded-3xl transition-all duration-300 shadow-xl ${selectedCategory === category.id
-                    ? "bg-white text-blue-600 scale-105"
-                    : "bg-white/20 backdrop-blur-xl text-white hover:bg-white hover:text-blue-600"
+                className={`flex-shrink-0 flex items-center px-4 sm:px-6 py-3 sm:py-4 rounded-2xl sm:rounded-3xl transition-all duration-300 shadow-lg ${selectedCategory === category.id
+                  ? "bg-blue-600 text-white scale-105"
+                  : "bg-white text-gray-700 hover:bg-blue-50 hover:text-blue-600"
                   }`}
               >
-                <span className="text-2xl mr-3">{category.icon}</span>
-                <span className="font-bold text-sm tracking-tight whitespace-nowrap">{category.name}</span>
+                <span className="text-xl sm:text-2xl mr-2 sm:mr-3">{category.icon}</span>
+                <span className="font-bold text-xs sm:text-sm tracking-tight whitespace-nowrap">{category.name}</span>
               </button>
             ))}
           </div>

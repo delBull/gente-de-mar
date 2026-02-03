@@ -12,7 +12,8 @@ import {
     Users,
     Settings,
     ChevronRight,
-    HelpCircle
+    HelpCircle,
+    ArrowLeft
 } from "lucide-react";
 
 export default function Guide() {
@@ -28,9 +29,18 @@ export default function Guide() {
 
     return (
         <div className="flex h-[calc(100vh-4rem)] gap-6 p-6">
-            {/* Sidebar Navigation */}
             <Card className="w-64 flex-shrink-0 h-full">
                 <CardHeader>
+                    <div className="flex items-center justify-between mb-2">
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => window.history.back()}
+                            className="h-8 w-8 p-0"
+                        >
+                            <ArrowLeft className="h-4 w-4" />
+                        </Button>
+                    </div>
                     <CardTitle className="text-lg flex items-center gap-2">
                         <HelpCircle className="h-5 w-5 text-blue-500" />
                         Guía de Uso
