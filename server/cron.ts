@@ -1,6 +1,6 @@
 
-import { storage } from "./storage";
-import { emailService } from "./services/email";
+import { storage } from "./storage.js";
+import { emailService } from "./services/email.js";
 
 export function startCronJobs() {
     console.log("[CRON] Starting background jobs...");
