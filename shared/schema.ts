@@ -8,7 +8,7 @@ export const users = pgTable("users", {
   email: text("email").notNull().unique(),
   password: text("password").notNull(),
   fullName: text("full_name").notNull(),
-  role: text("role").notNull().default("business"), // master_admin, business, manager
+  role: text("role").notNull().default("seller"), // master_admin, seller, provider
   businessId: integer("business_id").references(() => businesses.id),
   permissions: text("permissions").array(), // array of permission strings
   isActive: boolean("is_active").notNull().default(true),
@@ -45,6 +45,10 @@ export const tours = pgTable("tours", {
   departureTime: text("departure_time"),
   category: text("category").notNull().default("tour"),
   gallery: text("gallery").array(),
+  sellerId: integer("seller_id").references(() => users.id), // Independent Seller
+  providerId: integer("provider_id").references(() => users.id), // Tour Owner/Operator
+  richDescription: text("rich_description"), // Markdown content
+  galleryUrls: text("gallery_urls").array(), // Multi-image support
 });
 
 export const transactions = pgTable("transactions", {
@@ -59,6 +63,9 @@ export const transactions = pgTable("transactions", {
   bankCommission: decimal("bank_commission", { precision: 10, scale: 2 }).notNull(),
   otherRetentions: decimal("other_retentions", { precision: 10, scale: 2 }).notNull(),
   sellerPayout: decimal("seller_payout", { precision: 10, scale: 2 }).notNull(),
+  sellerCommission: decimal("seller_commission", { precision: 10, scale: 2 }).notNull().default("0.00"),
+  providerPayout: decimal("provider_payout", { precision: 10, scale: 2 }).notNull().default("0.00"),
+  platformFee: decimal("platform_fee", { precision: 10, scale: 2 }).notNull().default("0.00"),
 });
 
 export const retentionConfig = pgTable("retention_config", {
@@ -67,6 +74,8 @@ export const retentionConfig = pgTable("retention_config", {
   taxRate: decimal("tax_rate", { precision: 5, scale: 2 }).notNull().default("16.00"),
   bankCommissionRate: decimal("bank_commission_rate", { precision: 5, scale: 2 }).notNull().default("3.00"),
   otherRetentionsRate: decimal("other_retentions_rate", { precision: 5, scale: 2 }).notNull().default("2.00"),
+  defaultSellerCommissionRate: decimal("default_seller_commission_rate", { precision: 5, scale: 2 }).notNull().default("10.00"),
+  defaultPlatformFeeRate: decimal("default_platform_fee_rate", { precision: 5, scale: 2 }).notNull().default("5.00"),
 });
 
 export const customers = pgTable("customers", {
@@ -103,6 +112,9 @@ export const bookings = pgTable("bookings", {
   stripePaymentIntentId: text("stripe_payment_intent_id"),
   stripeSessionId: text("stripe_session_id"),
   paymentStatus: text("payment_status").notNull().default("unpaid"), // unpaid, paid, partially_refunded, refunded
+  proposedDate: timestamp("proposed_date"), // New date proposed by system/provider
+  rescheduleReason: text("reschedule_reason"), // Reason for the technical modification
+  rescheduleToken: text("reschedule_token"), // Token for customer to resolve without login
 });
 
 export const payments = pgTable("payments", {
@@ -151,6 +163,16 @@ export const media = pgTable("media", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+export const availabilityOverrides = pgTable("availability_overrides", {
+  id: serial("id").primaryKey(),
+  tourId: integer("tour_id").references(() => tours.id).notNull(),
+  date: timestamp("date").notNull(),
+  isAvailable: boolean("is_available").notNull().default(true),
+  customCapacity: integer("custom_capacity"),
+  reason: text("reason"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 export const insertUserSchema = createInsertSchema(users).pick({
   username: true,
   email: true,
@@ -178,7 +200,36 @@ export const insertTourSchema = createInsertSchema(tours).pick({
   imageUrl: true,
   description: true,
   userId: true,
-}).partial({ status: true, imageUrl: true, description: true, userId: true });
+  sellerId: true,
+  providerId: true,
+  richDescription: true,
+  galleryUrls: true,
+  capacity: true,
+  duration: true,
+  includes: true,
+  requirements: true,
+  departureTime: true,
+  category: true,
+  gallery: true,
+  businessId: true,
+}).partial({
+  status: true,
+  imageUrl: true,
+  description: true,
+  userId: true,
+  sellerId: true,
+  providerId: true,
+  richDescription: true,
+  galleryUrls: true,
+  capacity: true,
+  duration: true,
+  includes: true,
+  requirements: true,
+  departureTime: true,
+  category: true,
+  gallery: true,
+  businessId: true,
+});
 
 export const insertTransactionSchema = createInsertSchema(transactions).pick({
   tourId: true,
@@ -190,13 +241,18 @@ export const insertTransactionSchema = createInsertSchema(transactions).pick({
   bankCommission: true,
   otherRetentions: true,
   sellerPayout: true,
-}).partial({ status: true, tourId: true });
+  sellerCommission: true,
+  providerPayout: true,
+  platformFee: true,
+}).partial({ status: true, tourId: true, sellerCommission: true, providerPayout: true, platformFee: true });
 
 export const insertRetentionConfigSchema = createInsertSchema(retentionConfig).pick({
   appCommissionRate: true,
   taxRate: true,
   bankCommissionRate: true,
   otherRetentionsRate: true,
+  defaultSellerCommissionRate: true,
+  defaultPlatformFeeRate: true,
 });
 
 export const insertCustomerSchema = createInsertSchema(customers).pick({
@@ -272,6 +328,14 @@ export const insertMediaSchema = createInsertSchema(media).pick({
   size: true,
 });
 
+export const insertAvailabilityOverrideSchema = createInsertSchema(availabilityOverrides).pick({
+  tourId: true,
+  date: true,
+  isAvailable: true,
+  customCapacity: true,
+  reason: true,
+});
+
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 export type InsertBusiness = z.infer<typeof insertBusinessSchema>;
@@ -294,3 +358,5 @@ export type InsertPayment = z.infer<typeof insertPaymentSchema>;
 export type Payment = typeof payments.$inferSelect;
 export type InsertMedia = z.infer<typeof insertMediaSchema>;
 export type Media = typeof media.$inferSelect;
+export type InsertAvailabilityOverride = z.infer<typeof insertAvailabilityOverrideSchema>;
+export type AvailabilityOverride = typeof availabilityOverrides.$inferSelect;

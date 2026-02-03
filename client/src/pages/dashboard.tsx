@@ -45,7 +45,7 @@ export default function Dashboard() {
               <StaticLogo size="sm" showText={false} />
               <div>
                 <h2 className="text-xl md:text-2xl font-bold text-foreground">¡Hola Darío!</h2>
-                <p className="text-sm md:text-base text-muted-foreground">Dashboard financiero</p>
+                <p className="text-sm md:text-base text-muted-foreground">Panel de control financiero</p>
               </div>
             </div>
 
@@ -64,7 +64,7 @@ export default function Dashboard() {
                 ) : (
                   <>
                     <Smartphone className="w-4 h-4" />
-                    <span className="hidden sm:inline">Mobile</span>
+                    <span className="hidden sm:inline">Móvil</span>
                   </>
                 )}
               </Button>
@@ -80,7 +80,7 @@ export default function Dashboard() {
           <main className="p-4 space-y-6">
             {/* Mobile-style Header */}
             <div className="text-center pb-4">
-              <h1 className="text-2xl font-bold text-gray-900 mb-2">Dashboard</h1>
+              <h1 className="text-2xl font-bold text-gray-900 mb-2">Panel Control</h1>
               <p className="text-gray-600">Resumen general de tu negocio</p>
             </div>
 

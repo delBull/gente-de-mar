@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { useRoute, useLocation } from "wouter";
 import { usePublicTour } from "@/hooks/usePublicTours";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -69,19 +69,15 @@ export default function Booking() {
 
   const { data: tour, isLoading } = usePublicTour(tourId!);
 
+  const { data: overrides } = useQuery<any[]>({
+    queryKey: [`/api/tours/${tourId}/availability-overrides`],
+    enabled: !!tourId,
+  });
+
   const bookingMutation = useMutation({
-    mutationFn: async (data: {
-      tourId: number;
-      bookingDate: Date;
-      adults: number;
-      children: number;
-      customerName: string;
-      customerEmail: string;
-      customerPhone: string;
-      specialRequests: string;
-      totalAmount: string;
-    }): Promise<any> => {
-      return await apiRequest("POST", "/api/bookings", data);
+    mutationFn: async (data: any): Promise<any> => {
+      const res = await apiRequest("POST", "/api/bookings", data);
+      return res.json();
     },
     onSuccess: async (booking) => {
       toast({
@@ -122,8 +118,15 @@ export default function Booking() {
 
   const tomorrow = addDays(new Date(), 1);
 
+  const isBlocked = (date: Date) => {
+    if (!overrides || !Array.isArray(overrides)) return false;
+    return overrides.some((o: any) =>
+      new Date(o.date).toDateString() === date.toDateString() && !o.isAvailable
+    );
+  };
+
   const handleDateSelect = (date: Date | undefined) => {
-    if (date && (isTomorrow(date) || isAfter(date, tomorrow))) {
+    if (date && (isTomorrow(date) || isAfter(date, tomorrow)) && !isBlocked(date)) {
       setSelectedDate(date);
     }
   };
@@ -368,7 +371,7 @@ export default function Booking() {
                   mode="single"
                   selected={selectedDate}
                   onSelect={handleDateSelect}
-                  disabled={(date) => !isTomorrow(date) && !isAfter(date, tomorrow)}
+                  disabled={(date) => (!isTomorrow(date) && !isAfter(date, tomorrow)) || isBlocked(date)}
                   locale={es}
                   className="rounded-xl"
                 />

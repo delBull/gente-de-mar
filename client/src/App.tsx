@@ -12,6 +12,7 @@ import Payments from "@/pages/payments";
 import Reports from "@/pages/reports";
 import Settings from "@/pages/settings";
 import CustomerHome from "@/pages/customer-home";
+import Agenda from "@/pages/agenda";
 import Customers from "@/pages/customers";
 import Booking from "@/pages/booking";
 import BookingSuccess from "@/pages/booking-success";
@@ -19,6 +20,7 @@ import BookingConfirmation from "@/pages/booking-confirmation";
 import Ticket from "@/pages/ticket";
 import Payment from "@/pages/payment";
 import RedeemTicket from "@/pages/redeem-ticket";
+import ResolveBooking from "@/pages/resolve-booking";
 import NotFound from "@/pages/not-found";
 import Login from "@/pages/login";
 
@@ -44,6 +46,7 @@ function Router() {
       <Route path="/reports" component={isAuthenticated ? Reports : Login} />
       <Route path="/settings" component={isAuthenticated ? Settings : Login} />
       <Route path="/customers" component={isAuthenticated ? Customers : Login} />
+      <Route path="/agenda" component={isAuthenticated ? Agenda : Login} />
       <Route path="/redeem" component={isAuthenticated ? RedeemTicket : Login} />
       <Route path="/redeem-ticket" component={isAuthenticated ? RedeemTicket : Login} />
 
@@ -54,6 +57,7 @@ function Router() {
       <Route path="/payment/:bookingData" component={Payment} />
       <Route path="/booking-success/:bookingId" component={BookingSuccess} />
       <Route path="/ticket/:id" component={Ticket} />
+      <Route path="/resolve-booking/:token" component={ResolveBooking} />
 
       <Route component={NotFound} />
     </Switch>

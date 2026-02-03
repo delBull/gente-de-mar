@@ -33,9 +33,10 @@ import {
 } from "lucide-react";
 
 const navigation = [
-  { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard, section: "dashboard" },
+  { name: "Panel Control", href: "/dashboard", icon: LayoutDashboard, section: "dashboard" },
   { name: "Tours", href: "/tours", icon: MapPin, section: "tours" },
   { name: "Reservaciones", href: "/reservations", icon: Calendar, section: "reservations" },
+  { name: "Agenda", href: "/agenda", icon: Calendar, section: "reservations" },
   { name: "Pagos", href: "/payments", icon: CreditCard, section: "payments" },
   { name: "Reportes", href: "/reports", icon: BarChart3, section: "reports" },
   { name: "Portal de Reservas", href: "/customer", icon: ShoppingCart, section: "customer" },
@@ -169,7 +170,7 @@ export default function MobileSidebar() {
                     <p className="text-sm font-medium text-sidebar-foreground truncate">
                       {user?.fullName}
                     </p>
-                    <p className="text-xs text-primary">
+                    <p className="text-xs text-primary font-bold">
                       {getRoleLabel(user?.role || '')}
                     </p>
                   </div>

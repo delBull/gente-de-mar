@@ -1,9 +1,9 @@
 import {
-  users, businesses, tours, transactions, retentionConfig, customers, bookings, seatHolds, ticketRedemptions, payments, media,
+  users, businesses, tours, transactions, retentionConfig, customers, bookings, seatHolds, ticketRedemptions, payments, media, availabilityOverrides,
   type User, type InsertUser, type Business, type InsertBusiness, type Tour, type InsertTour, type Transaction, type InsertTransaction,
   type RetentionConfig, type InsertRetentionConfig, type Customer, type InsertCustomer,
   type Booking, type InsertBooking, type SeatHold, type InsertSeatHold, type TicketRedemption, type InsertTicketRedemption,
-  type Payment, type InsertPayment, type Media, type InsertMedia
+  type Payment, type InsertPayment, type Media, type InsertMedia, type AvailabilityOverride, type InsertAvailabilityOverride
 } from "../shared/schema.js";
 import { eq, desc, and, sql } from "drizzle-orm";
 import { db } from "./db.js";
@@ -15,6 +15,7 @@ export interface IStorage {
   getUserByUsername(username: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
   authenticateUser(username: string, password: string): Promise<User | null>;
+  getUsers(): Promise<User[]>;
 
   // Tours
   getTour(id: number): Promise<Tour | undefined>;
@@ -42,7 +43,9 @@ export interface IStorage {
   getBookingsByBusiness(businessId: number): Promise<Booking[]>;
   getBookingByQR(qrCode: string): Promise<Booking | undefined>;
   getBookingByAlphanumericCode(code: string): Promise<Booking | undefined>;
+  getBookingByToken(token: string): Promise<Booking | undefined>;
   updateBookingStatus(id: number, status: string): Promise<Booking | undefined>;
+  updateBooking(id: number, booking: Partial<Booking>): Promise<Booking | undefined>;
   createBooking(booking: InsertBooking & { qrCode: string; alphanumericCode: string; status: string; reservedUntil: Date }): Promise<Booking>;
   redeemTicket(bookingId: number, redeemedBy: number, method: string, notes?: string): Promise<TicketRedemption>;
 
@@ -70,6 +73,9 @@ export interface IStorage {
     totalAppCommission: number;
     totalRetentions: number;
     totalSellerPayout: number;
+    totalSellerCommission: number;
+    totalProviderPayout: number;
+    totalPlatformFee: number;
   }>;
 
   getFinancialSummaryByBusiness(businessId: number): Promise<{
@@ -77,6 +83,9 @@ export interface IStorage {
     totalAppCommission: number;
     totalRetentions: number;
     totalSellerPayout: number;
+    totalSellerCommission: number;
+    totalProviderPayout: number;
+    totalPlatformFee: number;
   }>;
 
   initializeDatabase(): Promise<void>;
@@ -85,6 +94,11 @@ export interface IStorage {
   getMedia(id: number): Promise<Media | undefined>;
   createMedia(media: InsertMedia): Promise<Media>;
   deleteMedia(id: number): Promise<void>;
+
+  // Availability Overrides
+  getAvailabilityOverrides(tourId: number): Promise<AvailabilityOverride[]>;
+  createAvailabilityOverride(override: InsertAvailabilityOverride): Promise<AvailabilityOverride>;
+  deleteAvailabilityOverride(id: number): Promise<void>;
 }
 
 export class MemStorage implements IStorage {
@@ -96,6 +110,7 @@ export class MemStorage implements IStorage {
   private ticketRedemptions: Map<number, TicketRedemption>;
   private payments: Map<number, Payment>;
   private media: Map<number, Media>;
+  private availabilityOverrides: Map<number, AvailabilityOverride>;
   private retentionConfigData: RetentionConfig;
   private currentUserId: number;
   private currentTourId: number;
@@ -113,6 +128,7 @@ export class MemStorage implements IStorage {
     this.ticketRedemptions = new Map();
     this.payments = new Map();
     this.media = new Map();
+    this.availabilityOverrides = new Map();
     this.currentUserId = 1;
     this.currentTourId = 1;
     this.currentTransactionId = 1;
@@ -127,6 +143,8 @@ export class MemStorage implements IStorage {
       taxRate: "16.00",
       bankCommissionRate: "3.00",
       otherRetentionsRate: "2.00",
+      defaultSellerCommissionRate: "10.00",
+      defaultPlatformFeeRate: "5.00",
     };
 
     this.initializeData();
@@ -148,37 +166,37 @@ export class MemStorage implements IStorage {
       lastLogin: null
     };
 
-    const businessUser: User = {
+    const sellerUser: User = {
       id: 2,
-      username: "Business",
-      password: "tour2025",
-      email: "business@bookeros.com",
-      fullName: "Business User",
-      role: "business",
+      username: "Seller",
+      password: "seller2026",
+      email: "seller@bookeros.com",
+      fullName: "Independent Seller",
+      role: "seller",
       isActive: true,
       createdAt: new Date(),
       businessId: 1,
-      permissions: ["business_admin", "view_business_metrics", "manage_tours", "view_payments"],
+      permissions: ["view_tour_metrics", "manage_my_tours"],
       lastLogin: null
     };
 
-    const managerUser: User = {
+    const providerUser: User = {
       id: 3,
-      username: "Manager",
-      password: "admin",
-      email: "manager@bookeros.com",
-      fullName: "Manager User",
-      role: "manager",
+      username: "Provider",
+      password: "provider2026",
+      email: "provider@bookeros.com",
+      fullName: "Tour Provider",
+      role: "provider",
       isActive: true,
       createdAt: new Date(),
       businessId: 1,
-      permissions: ["manage_tours", "view_bookings", "view_reports"],
+      permissions: ["redeem_tickets", "view_redemptions"],
       lastLogin: null
     };
 
     this.users.set(1, masterAdmin);
-    this.users.set(2, businessUser);
-    this.users.set(3, managerUser);
+    this.users.set(2, sellerUser);
+    this.users.set(3, providerUser);
     this.currentUserId = 4;
 
     // Create sample tours with realistic Puerto Vallarta prices
@@ -199,7 +217,11 @@ export class MemStorage implements IStorage {
         includes: ["Transporte desde hotel", "Equipo de snorkel", "Almuerzo gourmet", "Bebidas ilimitadas", "Guía certificado", "Chaleco salvavidas", "Seguro de viaje"],
         requirements: "Saber nadar básico. Edad mínima 8 años. Reservación obligatoria con anticipación por ser área protegida.",
         category: "aventura",
-        gallery: []
+        gallery: [],
+        sellerId: 2,
+        providerId: 3,
+        richDescription: null,
+        galleryUrls: []
       },
       {
         id: 2,
@@ -217,7 +239,11 @@ export class MemStorage implements IStorage {
         includes: ["Embarcación de lujo", "Capitán y marinero expertos", "Equipo de pesca profesional", "Carnadas y señuelos", "Almuerzo y bebidas", "Hielo para el pescado", "Limpieza del pescado"],
         requirements: "Todas las edades. No se requiere experiencia previa. Recomendable tomar medicamento para mareo.",
         category: "pesca",
-        gallery: []
+        gallery: [],
+        sellerId: 2,
+        providerId: 3,
+        richDescription: null,
+        galleryUrls: []
       },
       {
         id: 3,
@@ -235,7 +261,11 @@ export class MemStorage implements IStorage {
         includes: ["Catamarán de lujo", "Cena gourmet de 3 tiempos", "Bar libre premium", "Música en vivo", "Photographer profesional", "Toallas", "Área de descanso VIP"],
         requirements: "Todas las edades. Vestimenta elegante-casual recomendada.",
         category: "romance",
-        gallery: []
+        gallery: [],
+        sellerId: 2,
+        providerId: 3,
+        richDescription: null,
+        galleryUrls: []
       },
       {
         id: 4,
@@ -253,7 +283,11 @@ export class MemStorage implements IStorage {
         includes: ["Transporte de ida y vuelta", "ATV individual o doble", "Equipo de seguridad completo", "Guías especializados", "Almuerzo típico mexicano", "Bebidas refrescantes", "Seguro de accidentes"],
         requirements: "Edad mínima 16 años para manejar. Menores acompañados por adulto. Ropa cómoda y tenis cerrados obligatorios.",
         category: "aventura",
-        gallery: []
+        gallery: [],
+        sellerId: 2,
+        providerId: 3,
+        richDescription: null,
+        galleryUrls: []
       },
       {
         id: 5,
@@ -271,7 +305,11 @@ export class MemStorage implements IStorage {
         includes: ["Embarcación especializada", "Biólogo marino especialista", "Hidrófonos para escuchar ballenas", "Snacks y bebidas", "Equipo de fotografía submarina", "Certificado de avistamiento", "Guía naturalista"],
         requirements: "Temporada disponible dic-mar. Todas las edades. Medicamento para mareo recomendado.",
         category: "naturaleza",
-        gallery: []
+        gallery: [],
+        sellerId: 2,
+        providerId: 3,
+        richDescription: null,
+        galleryUrls: []
       },
       {
         id: 6,
@@ -289,7 +327,11 @@ export class MemStorage implements IStorage {
         includes: ["Tren José Cuervo Express", "Desayuno continental", "Tour destilería premium", "Degustación de tequilas", "Almuerzo típico mexicano", "Show de mariachis", "Tiempo libre en el pueblo", "Cena ligera"],
         requirements: "Mayores de 18 años para degustación de alcohol. Documento de identidad obligatorio.",
         category: "cultural",
-        gallery: []
+        gallery: [],
+        sellerId: 2,
+        providerId: 3,
+        richDescription: null,
+        galleryUrls: []
       }
     ];
 
@@ -309,7 +351,10 @@ export class MemStorage implements IStorage {
         taxAmount: "192.00",
         bankCommission: "36.00",
         otherRetentions: "24.00",
-        sellerPayout: "888.00"
+        sellerPayout: "888.00",
+        sellerCommission: "120.00",
+        providerPayout: "768.00",
+        platformFee: "60.00",
       },
       {
         id: 2,
@@ -322,7 +367,10 @@ export class MemStorage implements IStorage {
         taxAmount: "136.00",
         bankCommission: "25.50",
         otherRetentions: "17.00",
-        sellerPayout: "629.00"
+        sellerPayout: "629.00",
+        sellerCommission: "85.00",
+        providerPayout: "544.00",
+        platformFee: "42.50"
       },
       {
         id: 3,
@@ -335,7 +383,10 @@ export class MemStorage implements IStorage {
         taxAmount: "384.00",
         bankCommission: "72.00",
         otherRetentions: "48.00",
-        sellerPayout: "1776.00"
+        sellerPayout: "1776.00",
+        sellerCommission: "240.00",
+        providerPayout: "1536.00",
+        platformFee: "120.00"
       }
     ];
 
@@ -359,12 +410,16 @@ export class MemStorage implements IStorage {
     return user || null;
   }
 
+  async getUsers(): Promise<User[]> {
+    return Array.from(this.users.values());
+  }
+
   async createUser(insertUser: InsertUser): Promise<User> {
     const id = this.currentUserId++;
     const user: User = {
       ...insertUser,
       id,
-      role: insertUser.role || "business",
+      role: insertUser.role || "seller",
       isActive: true,
       createdAt: new Date(),
       lastLogin: null,
@@ -410,14 +465,18 @@ export class MemStorage implements IStorage {
       imageUrl: insertTour.imageUrl || null,
       description: insertTour.description || null,
       userId: insertTour.userId || null,
-      capacity: 10,
-      duration: null,
-      includes: [],
-      requirements: null,
-      departureTime: null,
-      category: "tour",
-      gallery: [],
-      businessId: null
+      capacity: insertTour.capacity || 10,
+      duration: insertTour.duration || null,
+      includes: insertTour.includes || [],
+      requirements: insertTour.requirements || null,
+      departureTime: insertTour.departureTime || null,
+      category: insertTour.category || "tour",
+      gallery: insertTour.gallery || [],
+      galleryUrls: insertTour.galleryUrls || [],
+      sellerId: insertTour.sellerId || null,
+      providerId: insertTour.providerId || null,
+      richDescription: insertTour.richDescription || null,
+      businessId: insertTour.businessId || null
     };
     this.tours.set(id, tour);
     return tour;
@@ -459,6 +518,9 @@ export class MemStorage implements IStorage {
       id,
       status: insertTransaction.status || "completed",
       tourId: insertTransaction.tourId || null,
+      sellerCommission: insertTransaction.sellerCommission || "0.00",
+      providerPayout: insertTransaction.providerPayout || "0.00",
+      platformFee: insertTransaction.platformFee || "0.00",
       createdAt: new Date()
     };
     this.transactions.set(id, transaction);
@@ -481,6 +543,9 @@ export class MemStorage implements IStorage {
     totalAppCommission: number;
     totalRetentions: number;
     totalSellerPayout: number;
+    totalSellerCommission: number;
+    totalProviderPayout: number;
+    totalPlatformFee: number;
   }> {
     const transactions = Array.from(this.transactions.values());
 
@@ -493,12 +558,43 @@ export class MemStorage implements IStorage {
 
     const totalRetentions = totalTaxAmount + totalBankCommission + totalOtherRetentions;
 
+    const totalSellerCommission = transactions.reduce((sum, t) => sum + parseFloat(t.sellerCommission || "0"), 0);
+    const totalProviderPayout = transactions.reduce((sum, t) => sum + parseFloat(t.providerPayout || "0"), 0);
+    const totalPlatformFee = transactions.reduce((sum, t) => sum + parseFloat(t.platformFee || "0"), 0);
+
     return {
       totalRevenue,
       totalAppCommission,
       totalRetentions,
-      totalSellerPayout
+      totalSellerPayout,
+      totalSellerCommission,
+      totalProviderPayout,
+      totalPlatformFee
     };
+  }
+
+  // Availability Overrides Implementation
+  async getAvailabilityOverrides(tourId: number): Promise<AvailabilityOverride[]> {
+    return Array.from(this.availabilityOverrides.values()).filter(o => o.tourId === tourId);
+  }
+
+  async createAvailabilityOverride(insertOverride: InsertAvailabilityOverride): Promise<AvailabilityOverride> {
+    const id = Array.from(this.availabilityOverrides.values()).length + 1;
+    const override: AvailabilityOverride = {
+      id,
+      tourId: insertOverride.tourId,
+      date: new Date(insertOverride.date),
+      isAvailable: insertOverride.isAvailable ?? true,
+      customCapacity: insertOverride.customCapacity || null,
+      reason: insertOverride.reason || null,
+      createdAt: new Date()
+    };
+    this.availabilityOverrides.set(id, override);
+    return override;
+  }
+
+  async deleteAvailabilityOverride(id: number): Promise<void> {
+    this.availabilityOverrides.delete(id);
   }
 
   // Booking methods
@@ -523,7 +619,18 @@ export class MemStorage implements IStorage {
     const booking = this.bookings.get(id);
     if (booking) {
       const updatedBooking = { ...booking, status };
-      return updatedBooking;
+      this.bookings.set(id, updatedBooking as Booking);
+      return updatedBooking as Booking;
+    }
+    return undefined;
+  }
+
+  async updateBooking(id: number, data: Partial<Booking>): Promise<Booking | undefined> {
+    const booking = this.bookings.get(id);
+    if (booking) {
+      const updatedBooking = { ...booking, ...data };
+      this.bookings.set(id, updatedBooking as Booking);
+      return updatedBooking as Booking;
     }
     return undefined;
   }
@@ -531,6 +638,11 @@ export class MemStorage implements IStorage {
   async getBookingByAlphanumericCode(code: string): Promise<Booking | undefined> {
     const bookings = Array.from(this.bookings.values());
     return bookings.find(b => b.alphanumericCode === code);
+  }
+
+  async getBookingByToken(token: string): Promise<Booking | undefined> {
+    const bookings = Array.from(this.bookings.values());
+    return bookings.find(b => b.rescheduleToken === token);
   }
 
   async createBooking(bookingData: InsertBooking & { qrCode: string; alphanumericCode: string; status: string; reservedUntil: Date }): Promise<Booking> {
@@ -551,6 +663,9 @@ export class MemStorage implements IStorage {
       stripePaymentIntentId: null,
       stripeSessionId: null,
       paymentStatus: "unpaid",
+      proposedDate: null,
+      rescheduleReason: null,
+      rescheduleToken: null,
       createdAt: new Date(),
     };
     this.bookings.set(booking.id, booking);
@@ -675,12 +790,18 @@ export class MemStorage implements IStorage {
     totalAppCommission: number;
     totalRetentions: number;
     totalSellerPayout: number;
+    totalSellerCommission: number;
+    totalProviderPayout: number;
+    totalPlatformFee: number;
   }> {
     return {
       totalRevenue: 0,
       totalAppCommission: 0,
       totalRetentions: 0,
-      totalSellerPayout: 0
+      totalSellerPayout: 0,
+      totalSellerCommission: 0,
+      totalProviderPayout: 0,
+      totalPlatformFee: 0
     };
   }
 
@@ -715,7 +836,7 @@ export class DatabaseStorage implements IStorage {
     try {
       // Create default business first
       const [defaultBusiness] = await db.insert(businesses).values({
-        id: 1, // Fix: providing ID to trigger ON CONFLICT on ID
+        id: 1,
         name: "BookerOS Tours",
         description: "Plataforma Premium de Gestión de Experiencias",
         contactEmail: "info@bookeros.com",
@@ -746,22 +867,22 @@ export class DatabaseStorage implements IStorage {
           permissions: ["all"]
         },
         {
-          username: "Business",
-          password: "tour2025",
-          email: "business@bookeros.com",
-          fullName: "Business User",
-          role: "business" as const,
+          username: "Seller",
+          password: "seller2026",
+          email: "seller@bookeros.com",
+          fullName: "Independent Seller",
+          role: "seller" as const,
           businessId: businessId,
-          permissions: ["business_admin", "view_business_metrics", "manage_tours", "view_payments"]
+          permissions: ["view_tour_metrics", "manage_my_tours"]
         },
         {
-          username: "Manager",
-          password: "admin",
-          email: "manager@bookeros.com",
-          fullName: "Manager User",
-          role: "manager" as const,
+          username: "Provider",
+          password: "provider2026",
+          email: "provider@bookeros.com",
+          fullName: "Tour Provider",
+          role: "provider" as const,
           businessId: businessId,
-          permissions: ["manage_tours", "view_bookings", "view_reports"]
+          permissions: ["redeem_tickets", "view_redemptions"]
         }
       ];
 
@@ -782,10 +903,13 @@ export class DatabaseStorage implements IStorage {
 
       // Create default retention config
       await db.insert(retentionConfig).values({
+        id: 1,
         appCommissionRate: "5.00",
         taxRate: "16.00",
         bankCommissionRate: "3.00",
-        otherRetentionsRate: "2.00"
+        otherRetentionsRate: "2.00",
+        defaultSellerCommissionRate: "10.00",
+        defaultPlatformFeeRate: "5.00"
       }).onConflictDoNothing();
 
       console.log("Database initialized with default users and configuration");
@@ -812,6 +936,15 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
+  async getUsers(): Promise<User[]> {
+    try {
+      return await db.select().from(users);
+    } catch (error) {
+      console.error("Error getting users:", error);
+      return [];
+    }
+  }
+
   async getUser(id: number): Promise<User | undefined> {
     try {
       const [user] = await db.select().from(users).where(eq(users.id, id));
@@ -833,8 +966,13 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createUser(insertUser: InsertUser): Promise<User> {
-    const [user] = await db.insert(users).values(insertUser).returning();
-    return user;
+    try {
+      const [user] = await db.insert(users).values(insertUser).returning();
+      return user;
+    } catch (error) {
+      console.error("Error creating user:", error);
+      throw error;
+    }
   }
 
   async getTour(id: number): Promise<Tour | undefined> {
@@ -889,8 +1027,13 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createTour(insertTour: InsertTour): Promise<Tour> {
-    const [tour] = await db.insert(tours).values(insertTour).returning();
-    return tour;
+    try {
+      const [tour] = await db.insert(tours).values(insertTour).returning();
+      return tour;
+    } catch (error) {
+      console.error("Error creating tour:", error);
+      throw error;
+    }
   }
 
   async updateTour(id: number, tourUpdate: Partial<Tour>): Promise<Tour | undefined> {
@@ -924,24 +1067,24 @@ export class DatabaseStorage implements IStorage {
 
   async getTransactionsByBusiness(businessId: number): Promise<Transaction[]> {
     try {
-      const rows = await db.select()
+      // In a real app we'd join with tours to filter by businessId
+      // For now, since tours have businessId, we can join
+      return await db.select({
+        transaction: transactions
+      })
         .from(transactions)
         .innerJoin(tours, eq(transactions.tourId, tours.id))
         .where(eq(tours.businessId, businessId))
-        .orderBy(desc(transactions.createdAt));
-
-      return rows.map(r => r.transactions);
+        .then(rows => rows.map(r => r.transaction));
     } catch (error) {
       console.error("Error getting transactions by business:", error);
       return [];
     }
   }
 
-  async getRecentTransactions(limit: number = 10): Promise<Transaction[]> {
+  async getRecentTransactions(limit: number = 5): Promise<Transaction[]> {
     try {
-      return await db.select().from(transactions)
-        .orderBy(desc(transactions.createdAt))
-        .limit(limit);
+      return await db.select().from(transactions).orderBy(desc(transactions.createdAt)).limit(limit);
     } catch (error) {
       console.error("Error getting recent transactions:", error);
       return [];
@@ -949,13 +1092,18 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createTransaction(insertTransaction: InsertTransaction): Promise<Transaction> {
-    const [transaction] = await db.insert(transactions).values(insertTransaction).returning();
-    return transaction;
+    try {
+      const [transaction] = await db.insert(transactions).values(insertTransaction).returning();
+      return transaction;
+    } catch (error) {
+      console.error("Error creating transaction:", error);
+      throw error;
+    }
   }
 
   async getRetentionConfig(): Promise<RetentionConfig | undefined> {
     try {
-      const [config] = await db.select().from(retentionConfig).limit(1);
+      const [config] = await db.select().from(retentionConfig).where(eq(retentionConfig.id, 1));
       return config;
     } catch (error) {
       console.error("Error getting retention config:", error);
@@ -963,10 +1111,19 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
-  async updateRetentionConfig(config: InsertRetentionConfig): Promise<RetentionConfig> {
-    const [updated] = await db.update(retentionConfig).set(config).returning();
-    return updated;
+  async updateRetentionConfig(configUpdate: InsertRetentionConfig): Promise<RetentionConfig> {
+    try {
+      const [config] = await db.update(retentionConfig)
+        .set(configUpdate)
+        .where(eq(retentionConfig.id, 1))
+        .returning();
+      return config;
+    } catch (error) {
+      console.error("Error updating retention config:", error);
+      throw error;
+    }
   }
+
 
   async getBooking(id: number): Promise<Booking | undefined> {
     try {
@@ -989,13 +1146,15 @@ export class DatabaseStorage implements IStorage {
 
   async getBookingsByBusiness(businessId: number): Promise<Booking[]> {
     try {
-      const rows = await db.select()
+      const rows = await db.select({
+        booking: bookings
+      })
         .from(bookings)
         .innerJoin(tours, eq(bookings.tourId, tours.id))
         .where(eq(tours.businessId, businessId))
         .orderBy(desc(bookings.createdAt));
 
-      return rows.map(r => r.bookings);
+      return rows.map(r => r.booking);
     } catch (error) {
       console.error("Error getting bookings by business:", error);
       return [];
@@ -1022,6 +1181,16 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
+  async getBookingByToken(token: string): Promise<Booking | undefined> {
+    try {
+      const [booking] = await db.select().from(bookings).where(eq(bookings.rescheduleToken, token));
+      return booking;
+    } catch (error) {
+      console.error("Error getting booking by token:", error);
+      return undefined;
+    }
+  }
+
   async updateBookingStatus(id: number, status: string): Promise<Booking | undefined> {
     try {
       const [booking] = await db.update(bookings).set({ status }).where(eq(bookings.id, id)).returning();
@@ -1032,14 +1201,29 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
+  async updateBooking(id: number, data: Partial<Booking>): Promise<Booking | undefined> {
+    try {
+      const [booking] = await db.update(bookings).set(data).where(eq(bookings.id, id)).returning();
+      return booking;
+    } catch (error) {
+      console.error("Error updating booking:", error);
+      return undefined;
+    }
+  }
+
   async createBooking(bookingData: InsertBooking & { qrCode: string; alphanumericCode: string; status: string; reservedUntil: Date }): Promise<Booking> {
-    const [booking] = await db.insert(bookings).values({
-      ...bookingData,
-      stripePaymentIntentId: null,
-      stripeSessionId: null,
-      paymentStatus: "unpaid"
-    }).returning();
-    return booking;
+    try {
+      const [booking] = await db.insert(bookings).values({
+        ...bookingData,
+        stripePaymentIntentId: null,
+        stripeSessionId: null,
+        paymentStatus: "unpaid"
+      }).returning();
+      return booking;
+    } catch (error) {
+      console.error("Error creating booking:", error);
+      throw error;
+    }
   }
 
   // Payments Implementation
@@ -1064,8 +1248,13 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createPayment(insertPayment: InsertPayment): Promise<Payment> {
-    const [payment] = await db.insert(payments).values(insertPayment).returning();
-    return payment;
+    try {
+      const [payment] = await db.insert(payments).values(insertPayment).returning();
+      return payment;
+    } catch (error) {
+      console.error("Error creating payment:", error);
+      throw error;
+    }
   }
 
   async updatePayment(id: number, paymentUpdate: Partial<Payment>): Promise<Payment | undefined> {
@@ -1131,14 +1320,16 @@ export class DatabaseStorage implements IStorage {
 
   async getTicketRedemptionsByBusiness(businessId: number): Promise<TicketRedemption[]> {
     try {
-      const rows = await db.select()
+      const rows = await db.select({
+        redemption: ticketRedemptions
+      })
         .from(ticketRedemptions)
         .innerJoin(bookings, eq(ticketRedemptions.bookingId, bookings.id))
         .innerJoin(tours, eq(bookings.tourId, tours.id))
         .where(eq(tours.businessId, businessId))
         .orderBy(desc(ticketRedemptions.redeemedAt));
 
-      return rows.map(r => r.ticket_redemptions);
+      return rows.map(r => r.redemption);
     } catch (error) {
       console.error("Error getting ticket redemptions by business:", error);
       return [];
@@ -1205,7 +1396,11 @@ export class DatabaseStorage implements IStorage {
           requirements: tours.requirements,
           departureTime: tours.departureTime,
           category: tours.category,
-          gallery: tours.gallery
+          gallery: tours.gallery,
+          sellerId: tours.sellerId,
+          providerId: tours.providerId,
+          richDescription: tours.richDescription,
+          galleryUrls: tours.galleryUrls
         }
       })
         .from(ticketRedemptions)
@@ -1225,8 +1420,13 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createSeatHold(seatHoldData: InsertSeatHold & { expiresAt: Date }): Promise<SeatHold> {
-    const [seatHold] = await db.insert(seatHolds).values(seatHoldData).returning();
-    return seatHold;
+    try {
+      const [seatHold] = await db.insert(seatHolds).values(seatHoldData).returning();
+      return seatHold;
+    } catch (error) {
+      console.error("Error creating seat hold:", error);
+      throw error;
+    }
   }
 
   async cleanupExpiredSeatHolds(): Promise<void> {
@@ -1242,19 +1442,41 @@ export class DatabaseStorage implements IStorage {
     totalAppCommission: number;
     totalRetentions: number;
     totalSellerPayout: number;
+    totalSellerCommission: number;
+    totalProviderPayout: number;
+    totalPlatformFee: number;
   }> {
     try {
       const result = await db.select({
         totalRevenue: sql<number>`COALESCE(SUM(amount), 0)`,
         totalAppCommission: sql<number>`COALESCE(SUM(app_commission), 0)`,
         totalRetentions: sql<number>`COALESCE(SUM(tax_amount + bank_commission + other_retentions), 0)`,
-        totalSellerPayout: sql<number>`COALESCE(SUM(seller_payout), 0)`
+        totalSellerPayout: sql<number>`COALESCE(SUM(seller_payout), 0)`,
+        totalSellerCommission: sql<number>`COALESCE(SUM(seller_commission), 0)`,
+        totalProviderPayout: sql<number>`COALESCE(SUM(provider_payout), 0)`,
+        totalPlatformFee: sql<number>`COALESCE(SUM(platform_fee), 0)`
       }).from(transactions);
 
-      return result[0] || { totalRevenue: 0, totalAppCommission: 0, totalRetentions: 0, totalSellerPayout: 0 };
+      return result[0] || {
+        totalRevenue: 0,
+        totalAppCommission: 0,
+        totalRetentions: 0,
+        totalSellerPayout: 0,
+        totalSellerCommission: 0,
+        totalProviderPayout: 0,
+        totalPlatformFee: 0
+      };
     } catch (error) {
       console.error("Error getting financial summary:", error);
-      return { totalRevenue: 0, totalAppCommission: 0, totalRetentions: 0, totalSellerPayout: 0 };
+      return {
+        totalRevenue: 0,
+        totalAppCommission: 0,
+        totalRetentions: 0,
+        totalSellerPayout: 0,
+        totalSellerCommission: 0,
+        totalProviderPayout: 0,
+        totalPlatformFee: 0
+      };
     }
   }
 
@@ -1263,22 +1485,44 @@ export class DatabaseStorage implements IStorage {
     totalAppCommission: number;
     totalRetentions: number;
     totalSellerPayout: number;
+    totalSellerCommission: number;
+    totalProviderPayout: number;
+    totalPlatformFee: number;
   }> {
     try {
       const result = await db.select({
         totalRevenue: sql<number>`COALESCE(SUM(transactions.amount), 0)`,
         totalAppCommission: sql<number>`COALESCE(SUM(transactions.app_commission), 0)`,
         totalRetentions: sql<number>`COALESCE(SUM(transactions.tax_amount + transactions.bank_commission + transactions.other_retentions), 0)`,
-        totalSellerPayout: sql<number>`COALESCE(SUM(transactions.seller_payout), 0)`
+        totalSellerPayout: sql<number>`COALESCE(SUM(transactions.seller_payout), 0)`,
+        totalSellerCommission: sql<number>`COALESCE(SUM(transactions.seller_commission), 0)`,
+        totalProviderPayout: sql<number>`COALESCE(SUM(transactions.provider_payout), 0)`,
+        totalPlatformFee: sql<number>`COALESCE(SUM(transactions.platform_fee), 0)`
       })
         .from(transactions)
         .innerJoin(tours, eq(transactions.tourId, tours.id))
         .where(eq(tours.businessId, businessId));
 
-      return result[0] || { totalRevenue: 0, totalAppCommission: 0, totalRetentions: 0, totalSellerPayout: 0 };
+      return result[0] || {
+        totalRevenue: 0,
+        totalAppCommission: 0,
+        totalRetentions: 0,
+        totalSellerPayout: 0,
+        totalSellerCommission: 0,
+        totalProviderPayout: 0,
+        totalPlatformFee: 0
+      };
     } catch (error) {
       console.error("Error getting financial summary by business:", error);
-      return { totalRevenue: 0, totalAppCommission: 0, totalRetentions: 0, totalSellerPayout: 0 };
+      return {
+        totalRevenue: 0,
+        totalAppCommission: 0,
+        totalRetentions: 0,
+        totalSellerPayout: 0,
+        totalSellerCommission: 0,
+        totalProviderPayout: 0,
+        totalPlatformFee: 0
+      };
     }
   }
 
@@ -1294,8 +1538,13 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createMedia(insertMedia: InsertMedia): Promise<Media> {
-    const [m] = await db.insert(media).values(insertMedia).returning();
-    return m;
+    try {
+      const [m] = await db.insert(media).values(insertMedia).returning();
+      return m;
+    } catch (error) {
+      console.error("Error creating media:", error);
+      throw error;
+    }
   }
 
   async deleteMedia(id: number): Promise<void> {
@@ -1303,6 +1552,34 @@ export class DatabaseStorage implements IStorage {
       await db.delete(media).where(eq(media.id, id));
     } catch (error) {
       console.error("Error deleting media:", error);
+    }
+  }
+
+  // Availability Overrides Implementation
+  async getAvailabilityOverrides(tourId: number): Promise<AvailabilityOverride[]> {
+    try {
+      return await db.select().from(availabilityOverrides).where(eq(availabilityOverrides.tourId, tourId));
+    } catch (error) {
+      console.error("Error getting availability overrides:", error);
+      return [];
+    }
+  }
+
+  async createAvailabilityOverride(insertOverride: InsertAvailabilityOverride): Promise<AvailabilityOverride> {
+    try {
+      const [override] = await db.insert(availabilityOverrides).values(insertOverride).returning();
+      return override;
+    } catch (error) {
+      console.error("Error creating availability override:", error);
+      throw error;
+    }
+  }
+
+  async deleteAvailabilityOverride(id: number): Promise<void> {
+    try {
+      await db.delete(availabilityOverrides).where(eq(availabilityOverrides.id, id));
+    } catch (error) {
+      console.error("Error deleting availability override:", error);
     }
   }
 }

@@ -6,7 +6,7 @@ import path from 'path';
 dotenv.config();
 
 export default defineConfig({
-  schema: path.join(__dirname, 'server', 'schema.ts'),
+  schema: path.join(__dirname, 'shared', 'schema.ts'),
   out: './migrations',
   dialect: 'postgresql',
   dbCredentials: {

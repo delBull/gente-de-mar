@@ -3,9 +3,10 @@ import { Waves, Anchor, Ship } from "lucide-react";
 interface StaticLogoProps {
   size?: "sm" | "md" | "lg";
   showText?: boolean;
+  className?: string;
 }
 
-export default function StaticLogo({ size = "md", showText = true }: StaticLogoProps) {
+export default function StaticLogo({ size = "md", showText = true, className = "" }: StaticLogoProps) {
   const sizeClasses = {
     sm: {
       container: "w-12 h-12",
@@ -33,23 +34,23 @@ export default function StaticLogo({ size = "md", showText = true }: StaticLogoP
   const classes = sizeClasses[size];
 
   return (
-    <div className="flex flex-col items-center justify-center">
+    <div className={`flex flex-col items-center justify-center ${className}`}>
       {/* Container principal del logo */}
       <div className="relative">
         <img
           src="/logo.png"
           alt="BookerOS Logo"
-          className={`${classes.container} object-contain`}
+          className={`${classes.container} object-contain transition-transform duration-500 hover:scale-110`}
         />
       </div>
 
       {/* Texto */}
       {showText && (
         <div className="mt-3 text-center">
-          <h2 className={`${classes.text} font-bold text-gray-900 tracking-tight`}>
+          <h2 className={`${classes.text} font-black text-gray-900 tracking-tighter italic bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-cyan-600`}>
             BookerOS
           </h2>
-          <p className="text-xs uppercase tracking-widest text-blue-600 font-semibold mt-0.5">
+          <p className="text-[10px] uppercase tracking-[0.3em] text-blue-600 font-bold mt-0.5">
             Tour Management
           </p>
         </div>

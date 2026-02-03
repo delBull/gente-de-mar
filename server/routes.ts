@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage.js";
-import { insertTransactionSchema, insertTourSchema, insertBookingSchema, insertSeatHoldSchema, insertTicketRedemptionSchema, insertPaymentSchema } from "../shared/schema.js";
+import { insertTransactionSchema, insertTourSchema, insertBookingSchema, insertSeatHoldSchema, insertTicketRedemptionSchema, insertPaymentSchema, insertAvailabilityOverrideSchema } from "../shared/schema.js";
 import { nanoid } from "nanoid";
 import { generateAlphanumericCode, canRedeemTickets, canCreateTours } from "../shared/utils.js";
 import { log } from "./vite.js";
@@ -78,6 +78,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/auth/logout", async (req, res) => {
     res.json({ message: "Logged out successfully" });
+  });
+
+  app.get("/api/users", async (req, res) => {
+    try {
+      const role = req.query.role as string;
+      const users = await storage.getUsers();
+      if (role) {
+        return res.json(users.filter(u => u.role === role));
+      }
+      res.json(users);
+    } catch (error) {
+      res.status(500).json({ message: "Error fetching users" });
+    }
   });
 
   // Customer logout endpoint - forces complete session cleanup
@@ -227,6 +240,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Availability Overrides Endpoints
+  app.get("/api/tours/:id/availability-overrides", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const overrides = await storage.getAvailabilityOverrides(id);
+      res.json(overrides);
+    } catch (error) {
+      res.status(500).json({ message: "Error fetching availability overrides" });
+    }
+  });
+
+  app.post("/api/availability-overrides", async (req, res) => {
+    try {
+      const overrideData = insertAvailabilityOverrideSchema.parse(req.body);
+      // Ensure date is a Date object if coming as string
+      if (typeof overrideData.date === 'string') {
+        overrideData.date = new Date(overrideData.date);
+      }
+      const override = await storage.createAvailabilityOverride(overrideData);
+      res.json(override);
+    } catch (error) {
+      console.error("Create override error:", error);
+      res.status(400).json({ message: "Invalid override data" });
+    }
+  });
+
+  app.delete("/api/availability-overrides/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      await storage.deleteAvailabilityOverride(id);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ message: "Error deleting availability override" });
+    }
+  });
+
   // Create seat hold (15-minute temporary reservation)
   app.post("/api/seat-holds", async (req, res) => {
     try {
@@ -334,12 +383,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (paymentInfo.status === 'paid') {
         await storage.updateBookingStatus(booking.id, "confirmed");
 
+        // Fetch retention config
+        const config = await storage.getRetentionConfig();
+        const totalAmount = parseFloat(booking.totalAmount);
+
+        // Use default rates if config exists, otherwise use 0
+        const platformRate = config ? parseFloat(config.defaultPlatformFeeRate) / 100 : 0.05;
+        const sellerRate = config ? parseFloat(config.defaultSellerCommissionRate) / 100 : 0.10;
+
+        // Calculate splits
+        const platformFee = totalAmount * platformRate;
+        const sellerCommission = totalAmount * sellerRate;
+
+        // Other fixed retentions (tax, bank commission)
+        const taxAmount = totalAmount * (config ? parseFloat(config.taxRate) / 100 : 0.16);
+        const bankCommAmount = totalAmount * (config ? parseFloat(config.bankCommissionRate) / 100 : 0.03);
+        const otherRetAmount = totalAmount * (config ? parseFloat(config.otherRetentionsRate) / 100 : 0.02);
+
+        const totalRetentions = taxAmount + bankCommAmount + otherRetAmount;
+        const providerPayout = totalAmount - platformFee - sellerCommission - totalRetentions;
+
         // Record payment
         await storage.createPayment({
           bookingId: booking.id,
           stripePaymentIntentId: paymentInfo.paymentIntentId,
           stripeCustomerId: paymentInfo.customerId || null,
-          amount: booking.totalAmount, // Use internal booking amount
+          amount: booking.totalAmount,
           currency: paymentInfo.currency,
           status: 'succeeded',
           mode: PAYMENT_MODE,
@@ -349,6 +418,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
           metadata: JSON.stringify({ sessionId })
         });
 
+        // Record detailed 3-way transaction
+        await storage.createTransaction({
+          tourId: booking.tourId,
+          tourName: (await storage.getTour(booking.tourId))?.name || "Unknown Tour",
+          amount: booking.totalAmount,
+          status: "completed",
+          appCommission: platformFee.toFixed(2),
+          taxAmount: taxAmount.toFixed(2),
+          bankCommission: bankCommAmount.toFixed(2),
+          otherRetentions: otherRetAmount.toFixed(2),
+          sellerPayout: "0.00", // Seller payout is handled separately or through sellerCommission field
+          sellerCommission: sellerCommission.toFixed(2),
+          providerPayout: providerPayout.toFixed(2),
+          platformFee: platformFee.toFixed(2)
+        });
+
         res.json({ success: true, status: 'confirmed' });
       } else {
         res.json({ success: false, status: paymentInfo.status });
@@ -356,6 +441,141 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Payment verification error:", error);
       res.status(500).json({ message: "Error verifying payment" });
+    }
+  });
+
+  // Cash Payment Confirmation (Offline)
+  app.post("/api/bookings/:id/confirm-cash-payment", async (req, res) => {
+    try {
+      const user = req.session?.user;
+      if (!user) return res.status(401).json({ message: "Authentication required" });
+
+      const id = parseInt(req.params.id);
+      const booking = await storage.getBooking(id);
+      if (!booking) return res.status(404).json({ message: "Booking not found" });
+
+      // Only sellers or admin can confirm cash payments
+      if (user.role !== 'seller' && user.role !== 'master_admin') {
+        return res.status(403).json({ message: "Only sellers and admins can register cash payments" });
+      }
+
+      await storage.updateBookingStatus(booking.id, "confirmed");
+
+      const config = await storage.getRetentionConfig();
+      const totalAmount = parseFloat(booking.totalAmount);
+
+      const platformRate = config ? parseFloat(config.defaultPlatformFeeRate) / 100 : 0.05;
+      const sellerRate = config ? parseFloat(config.defaultSellerCommissionRate) / 100 : 0.10;
+
+      const platformFee = totalAmount * platformRate;
+      const sellerCommission = totalAmount * sellerRate;
+
+      // For cash, bank commission is 0
+      const taxAmount = totalAmount * (config ? parseFloat(config.taxRate) / 100 : 0.16);
+      const otherRetAmount = totalAmount * (config ? parseFloat(config.otherRetentionsRate) / 100 : 0.02);
+
+      const providerPayout = totalAmount - platformFee - sellerCommission - taxAmount - otherRetAmount;
+
+      await storage.createPayment({
+        bookingId: booking.id,
+        stripePaymentIntentId: `CASH-${nanoid()}`,
+        stripeCustomerId: null,
+        amount: booking.totalAmount,
+        currency: "mxn",
+        status: 'succeeded',
+        mode: PAYMENT_MODE,
+        verified: true,
+        refundedAmount: "0.00",
+        paymentMethod: 'cash',
+        metadata: JSON.stringify({ confirmedBy: user.id })
+      });
+
+      await storage.createTransaction({
+        tourId: booking.tourId,
+        tourName: (await storage.getTour(booking.tourId))?.name || "Unknown Tour",
+        amount: booking.totalAmount,
+        status: "completed",
+        appCommission: platformFee.toFixed(2),
+        taxAmount: taxAmount.toFixed(2),
+        bankCommission: "0.00",
+        otherRetentions: otherRetAmount.toFixed(2),
+        sellerPayout: "0.00",
+        sellerCommission: sellerCommission.toFixed(2),
+        providerPayout: providerPayout.toFixed(2),
+        platformFee: platformFee.toFixed(2)
+      });
+
+      res.json({ success: true, status: 'confirmed' });
+    } catch (error) {
+      console.error("Cash payment error:", error);
+      res.status(500).json({ message: "Error confirming cash payment" });
+    }
+  });
+
+  // Propose Reschedule (Conflict Resolution)
+  app.post("/api/bookings/:id/propose-reschedule", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const { proposedDate, reason } = req.body;
+
+      const token = nanoid(12);
+      const booking = await storage.updateBooking(id, {
+        proposedDate: new Date(proposedDate),
+        rescheduleReason: reason,
+        rescheduleToken: token,
+        status: "pending_reschedule"
+      });
+
+      if (!booking) return res.status(404).json({ message: "Booking not found" });
+
+      res.json({ success: true, token, booking });
+    } catch (error) {
+      console.error("Propose reschedule error:", error);
+      res.status(500).json({ message: "Error proposing reschedule" });
+    }
+  });
+
+  // Resolve Booking (Public) - GET details
+  app.get("/api/bookings/resolve/:token", async (req, res) => {
+    try {
+      const { token } = req.params;
+      const booking = await storage.getBookingByToken(token);
+
+      if (!booking) return res.status(404).json({ message: "Invalid or expired token" });
+
+      const tour = await storage.getTour(booking.tourId);
+      res.json({ booking, tour });
+    } catch (error) {
+      res.status(500).json({ message: "Error fetching resolution data" });
+    }
+  });
+
+  // Resolve Booking (Public) - POST confirm
+  app.post("/api/bookings/resolve/:token", async (req, res) => {
+    try {
+      const { token } = req.params;
+      const { action, selectedDate } = req.body; // action: 'accept' or 'select_new'
+
+      const booking = await storage.getBookingByToken(token);
+      if (!booking) return res.status(404).json({ message: "Invalid or expired token" });
+
+      if (action === 'accept' && booking.proposedDate) {
+        await storage.updateBooking(booking.id, {
+          bookingDate: booking.proposedDate,
+          status: "confirmed",
+          rescheduleToken: null // Clear token after use
+        });
+      } else if (action === 'select_new' && selectedDate) {
+        await storage.updateBooking(booking.id, {
+          bookingDate: new Date(selectedDate),
+          status: "confirmed",
+          rescheduleToken: null
+        });
+      }
+
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ message: "Error resolving booking" });
     }
   });
 
