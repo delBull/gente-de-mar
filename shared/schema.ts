@@ -19,6 +19,17 @@ export const users = pgTable("users", {
   referralCode: text("referral_code").unique(),
 });
 
+export const webauthnCredentials = pgTable("webauthn_credentials", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  credentialId: text("credential_id").notNull().unique(),
+  publicKey: text("public_key").notNull(),
+  counter: integer("counter").notNull().default(0),
+  deviceName: text("device_name"),
+  transports: text("transports").array(), // USB, NFC, BLE, internal
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 export const businesses = pgTable("businesses", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),

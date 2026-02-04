@@ -11,9 +11,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { Save, User, Bell, CreditCard, Shield, Smartphone, Receipt, Building, Settings as SettingsIcon, Landmark } from "lucide-react";
+import { Save, User, Bell, CreditCard, Shield, Smartphone, Receipt, Building, Settings as SettingsIcon, Landmark, Fingerprint, Trash2 } from "lucide-react";
 import MobileSidebar from "@/components/mobile-sidebar";
 import { useAuth } from "@/hooks/useAuth";
+import { startRegistration } from "@simplewebauthn/browser";
+import PasskeyManager from "@/components/passkey-manager";
 
 interface PayoutConfig {
   bankName: string;
@@ -414,6 +416,22 @@ export default function Settings() {
                       {changePasswordMutation.isPending ? "Guardando..." : "Actualizar Contraseña"}
                     </Button>
                   </div>
+                </CardContent>
+              </Card>
+
+              {/* Passkey Management Card */}
+              <Card className="bg-gray-800 border border-gray-700 shadow-sm">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-white">
+                    <Fingerprint className="w-5 h-5 text-white" />
+                    Passkeys (Autenticación Biométrica)
+                  </CardTitle>
+                  <p className="text-sm text-gray-400">
+                    Inicia sesión con tu huella dactilar, Face ID, o llave de seguridad
+                  </p>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  <PasskeyManager />
                 </CardContent>
               </Card>
             </TabsContent>

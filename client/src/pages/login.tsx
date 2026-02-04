@@ -7,13 +7,16 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import StaticLogo from "@/components/static-logo";
-import { User, Lock, Loader2 } from "lucide-react";
+import { User, Lock, Loader2, Fingerprint } from "lucide-react";
 import { useLocation } from "wouter";
+import { startAuthentication } from "@simplewebauthn/browser";
+import { apiRequest } from "@/lib/queryClient";
 
 export default function Login() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [isPasskeyLoading, setIsPasskeyLoading] = useState(false);
 
   const { login } = useAuth();
   const [, setLocation] = useLocation();
@@ -44,6 +47,43 @@ export default function Login() {
       return;
     }
     loginMutation.mutate({ username: username.trim(), password });
+  };
+
+  // Passkey login handler
+  const handlePasskeyLogin = async () => {
+    setError("");
+    setIsPasskeyLoading(true);
+    try {
+      // Start authentication
+      const optionsRes = await apiRequest("POST", "/api/webauthn/login/start");
+      const options = await optionsRes.json();
+      const { tempKey, ...authOptions } = options;
+
+      // Get credential from authenticator
+      const credential = await startAuthentication(authOptions);
+
+      // Complete authentication
+      const verifyRes = await apiRequest(
+        "POST",
+        "/api/webauthn/login/finish",
+        { credential, tempKey }
+      );
+
+      if (verifyRes.ok) {
+        const data = await verifyRes.json();
+        // Redirect to dashboard
+        setTimeout(() => {
+          setLocation("/dashboard");
+        }, 100);
+      } else {
+        throw new Error("Authentication failed");
+      }
+    } catch (error: any) {
+      console.error("Passkey login error:", error);
+      setError(error.message || "Error con passkey. Intenta con usuario/contraseña");
+    } finally {
+      setIsPasskeyLoading(false);
+    }
   };
 
   return (
@@ -119,14 +159,37 @@ export default function Login() {
                 "Iniciar Sesión"
               )}
             </button>
-          </form>
 
-          <div className="mt-6 text-center text-sm text-muted-foreground space-y-1">
-            <p>Credenciales:</p>
-            <div className="text-xs space-y-1">
-              <p><strong>Master Admin:</strong> delbull / admin2026</p>
+            {/* Divider */}
+            <div className="relative my-6">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-gray-300"></div>
+              </div>
+              <div className="relative flex justify-center text-sm">
+                <span className="px-2 bg-card text-muted-foreground">O inicia con</span>
+              </div>
             </div>
-          </div>
+
+            {/* Passkey Login Button */}
+            <button
+              type="button"
+              onClick={handlePasskeyLogin}
+              disabled={isPasskeyLoading}
+              className="btn-ocean-secondary w-full flex items-center justify-center gap-2"
+            >
+              {isPasskeyLoading ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Autenticando...
+                </>
+              ) : (
+                <>
+                  <Fingerprint className="h-5 w-5" />
+                  Passkey (Huella / Face ID)
+                </>
+              )}
+            </button>
+          </form>
         </CardContent>
       </Card>
     </div>

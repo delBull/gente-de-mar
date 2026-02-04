@@ -1,5 +1,5 @@
 import {
-  users, businesses, tours, transactions, retentionConfig, customers, bookings, seatHolds, ticketRedemptions, payments, media, availabilityOverrides, coupons, referrals,
+  users, businesses, tours, transactions, retentionConfig, customers, bookings, seatHolds, ticketRedemptions, payments, media, availabilityOverrides, coupons, referrals, webauthnCredentials,
   type User, type InsertUser, type Business, type InsertBusiness, type Tour, type InsertTour, type Transaction, type InsertTransaction,
   type RetentionConfig, type InsertRetentionConfig, type Customer, type InsertCustomer,
   type Booking, type InsertBooking, type SeatHold, type InsertSeatHold, type TicketRedemption, type InsertTicketRedemption,
@@ -118,6 +118,14 @@ export interface IStorage {
   // Referrals
   createReferral(referral: InsertReferral): Promise<Referral>;
   getReferralsByUser(userId: number): Promise<Referral[]>;
+
+  // WebAuthn Credentials
+  createWebAuthnCredential(credential: any): Promise<any>;
+  getWebAuthnCredentialById(credentialId: string): Promise<any | undefined>;
+  getWebAuthnCredentialsByUserId(userId: number): Promise<any[]>;
+  updateWebAuthnCredential(id: number, updates: any): Promise<any>;
+  deleteWebAuthnCredential(id: number): Promise<void>;
+  getUserById(id: number): Promise<User | undefined>;
 }
 
 export class MemStorage implements IStorage {
@@ -953,6 +961,14 @@ export class MemStorage implements IStorage {
       (referral) => referral.referrerId === userId
     );
   }
+
+  // WebAuthn - Stub methods (MemStorage not used in production)
+  async createWebAuthnCredential(_cred: any): Promise<any> { throw new Error("Not implemented"); }
+  async getWebAuthnCredentialById(_id: string): Promise<any> { return undefined; }
+  async getWebAuthnCredentialsByUserId(_id: number): Promise<any[]> { return []; }
+  async updateWebAuthnCredential(_id: number, _updates: any): Promise<any> { throw new Error("Not implemented"); }
+  async deleteWebAuthnCredential(_id: number): Promise<void> { }
+  async getUserById(id: number): Promise<User | undefined> { return this.users.get(id); }
 }
 
 // DatabaseStorage implementation
@@ -1842,6 +1858,54 @@ export class DatabaseStorage implements IStorage {
 
   async getReferralsByUser(userId: number): Promise<Referral[]> {
     return await db.select().from(referrals).where(eq(referrals.referrerId, userId));
+  }
+
+  // WebAuthn Credentials Implementation
+  async createWebAuthnCredential(credential: any): Promise<any> {
+    const [newCredential] = await db.insert(webauthnCredentials).values({
+      userId: credential.userId,
+      credentialId: credential.credentialId,
+      publicKey: credential.publicKey,
+      counter: credential.counter,
+      deviceName: credential.deviceName || "Unknown Device",
+      transports: credential.transports || [],
+    }).returning();
+    return newCredential;
+  }
+
+  async getWebAuthnCredentialById(credentialId: string): Promise<any | undefined> {
+    const [credential] = await db.select()
+      .from(webauthnCredentials)
+      .where(eq(webauthnCredentials.credentialId, credentialId))
+      .limit(1);
+    return credential;
+  }
+
+  async getWebAuthnCredentialsByUserId(userId: number): Promise<any[]> {
+    return await db.select()
+      .from(webauthnCredentials)
+      .where(eq(webauthnCredentials.userId, userId));
+  }
+
+  async updateWebAuthnCredential(id: number, updates: any): Promise<any> {
+    const [updated] = await db.update(webauthnCredentials)
+      .set(updates)
+      .where(eq(webauthnCredentials.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteWebAuthnCredential(id: number): Promise<void> {
+    await db.delete(webauthnCredentials)
+      .where(eq(webauthnCredentials.id, id));
+  }
+
+  async getUserById(id: number): Promise<User | undefined> {
+    const [user] = await db.select()
+      .from(users)
+      .where(eq(users.id, id))
+      .limit(1);
+    return user;
   }
 }
 
