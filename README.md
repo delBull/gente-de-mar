@@ -158,10 +158,6 @@ npm start           # Iniciar servidor de producción
 
 El sistema inicializa con estos usuarios para pruebas:
 
-- **Master Admin**: `Dario` / `bookeros2026`
-- **Business**: `Business` / `tour2025` 
-- **Manager**: `Manager` / `admin`
-
 ## 🔑 Credenciales de Acceso
 
 ### Dashboard Administrativo

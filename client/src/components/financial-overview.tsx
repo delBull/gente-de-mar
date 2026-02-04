@@ -46,6 +46,14 @@ export default function FinancialOverview({ data, isLoading }: FinancialOverview
     );
   }
 
+  // Defensive check: ensure all required properties exist with defaults
+  const safeData = {
+    totalRevenue: Number(data?.totalRevenue) || 0,
+    totalAppCommission: Number(data?.totalAppCommission) || 0,
+    totalRetentions: Number(data?.totalRetentions) || 0,
+    totalSellerPayout: Number(data?.totalSellerPayout) || 0,
+  };
+
   const metrics = [
     {
       title: "Ingresos Totales",

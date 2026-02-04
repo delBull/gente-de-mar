@@ -15,6 +15,14 @@ interface PaymentFlowChartProps {
 export default function PaymentFlowChart({ data, isLoading }: PaymentFlowChartProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
+  // Safe data with defaults
+  const safeData = {
+    totalRevenue: Number(data?.totalRevenue) || 0,
+    totalAppCommission: Number(data?.totalAppCommission) || 0,
+    totalRetentions: Number(data?.totalRetentions) || 0,
+    totalSellerPayout: Number(data?.totalSellerPayout) || 0,
+  };
+
   useEffect(() => {
     if (!data || !canvasRef.current) return;
 
@@ -29,11 +37,11 @@ export default function PaymentFlowChart({ data, isLoading }: PaymentFlowChartPr
     // Clear canvas
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // Calculate percentages
-    const total = data.totalRevenue;
-    const sellerPercentage = (data.totalSellerPayout / total) * 100;
-    const appCommissionPercentage = (data.totalAppCommission / total) * 100;
-    const retentionsPercentage = (data.totalRetentions / total) * 100;
+    // Calculate percentages (defensive against division by zero)
+    const total = safeData.totalRevenue || 1; // Avoid division by zero
+    const sellerPercentage = (safeData.totalSellerPayout / total) * 100;
+    const appCommissionPercentage = (safeData.totalAppCommission / total) * 100;
+    const retentionsPercentage = (safeData.totalRetentions / total) * 100;
 
     // Draw doughnut chart
     const centerX = canvas.width / 2;
@@ -58,14 +66,14 @@ export default function PaymentFlowChart({ data, isLoading }: PaymentFlowChartPr
 
     segments.forEach((segment) => {
       const sliceAngle = (segment.percentage / 100) * 2 * Math.PI;
-      
+
       ctx.beginPath();
       ctx.arc(centerX, centerY, radius, startAngle, startAngle + sliceAngle);
       ctx.arc(centerX, centerY, innerRadius, startAngle + sliceAngle, startAngle, true);
       ctx.closePath();
       ctx.fillStyle = segment.color;
       ctx.fill();
-      
+
       startAngle += sliceAngle;
     });
 
@@ -111,7 +119,7 @@ export default function PaymentFlowChart({ data, isLoading }: PaymentFlowChartPr
     {
       step: 1,
       title: "Cliente Paga",
-      description: `$${data.totalRevenue.toLocaleString()} ingresados`,
+      description: `$${safeData.totalRevenue.toLocaleString()} ingresados`,
       percentage: "100%",
       color: "bg-primary",
       textColor: "text-primary",
@@ -120,7 +128,7 @@ export default function PaymentFlowChart({ data, isLoading }: PaymentFlowChartPr
       step: 2,
       title: "Comisión App",
       description: "5% retenido automáticamente",
-      amount: `$${data.totalAppCommission.toLocaleString()}`,
+      amount: `$${safeData.totalAppCommission.toLocaleString()}`,
       color: "bg-yellow-400",
       textColor: "text-yellow-400",
     },
@@ -128,7 +136,7 @@ export default function PaymentFlowChart({ data, isLoading }: PaymentFlowChartPr
       step: 3,
       title: "Impuestos + Comisiones",
       description: "IVA 16% + Comisión bancaria 3%",
-      amount: `$${data.totalRetentions.toLocaleString()}`,
+      amount: `$${safeData.totalRetentions.toLocaleString()}`,
       color: "bg-red-400",
       textColor: "text-red-400",
     },
@@ -136,7 +144,7 @@ export default function PaymentFlowChart({ data, isLoading }: PaymentFlowChartPr
       step: 4,
       title: "Pago Final",
       description: "Transferido a vendedores",
-      amount: `$${data.totalSellerPayout.toLocaleString()}`,
+      amount: `$${safeData.totalSellerPayout.toLocaleString()}`,
       color: "bg-blue-400",
       textColor: "text-blue-400",
     },

@@ -999,10 +999,10 @@ export class DatabaseStorage implements IStorage {
       // Create the exact users you specified
       const usersToCreate = [
         {
-          username: "Dario",
+          username: "Delbull",
           password: "bookeros2026",
-          email: "dario@bookeros.com",
-          fullName: "Dario - BookerOS Admin",
+          email: "delbull@bookeros.com",
+          fullName: "Delbull - BookerOS Admin",
           role: "master_admin" as const,
           businessId: null,
           permissions: ["all"]

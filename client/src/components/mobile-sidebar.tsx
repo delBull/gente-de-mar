@@ -172,7 +172,7 @@ export default function MobileSidebar() {
                   {getRoleIcon(user?.role || '')}
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-sidebar-foreground truncate">
-                      {user?.fullName}
+                      {user?.role === 'master_admin' ? 'Delbull' : user?.fullName}
                     </p>
                     <p className="text-xs text-primary font-bold">
                       {getRoleLabel(user?.role || '')}
@@ -192,7 +192,7 @@ export default function MobileSidebar() {
           )}
         </div>
       </div>
-    </div>
+    </div >
   );
 
   // Mobile Sidebar Content
@@ -291,7 +291,7 @@ export default function MobileSidebar() {
               {getRoleIcon(user?.role || '')}
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-sidebar-foreground truncate">
-                  {user?.fullName}
+                  {user?.role === 'master_admin' ? 'Delbull' : user?.fullName}
                 </p>
                 <p className="text-xs text-primary">
                   {getRoleLabel(user?.role || '')}

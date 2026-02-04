@@ -142,9 +142,7 @@ Abre http://localhost:5000
 ## 🔑 Credenciales de Acceso
 
 ### Dashboard Admin
-- **Master**: Dario / bookeros2026
-- **Business**: Business / tour2025  
-- **Manager**: Manager / admin
+
 
 ### Portal Cliente
 - Acceso libre sin registro

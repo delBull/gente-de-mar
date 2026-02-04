@@ -28,8 +28,8 @@ interface PayoutConfig {
 export default function Settings() {
   const { user, refetchUser } = useAuth();
   const [profileData, setProfileData] = useState({
-    fullName: user?.fullName || "Darío",
-    email: user?.email || "dario@bookeros.com",
+    fullName: user?.fullName || "Delbull",
+    email: user?.email || "admin@bookeros.com",
     phone: (user as any)?.phone || "+52 322 123 4567",
     businessName: "BookerOS Tours",
     businessAddress: "Puerto Vallarta, Jalisco",

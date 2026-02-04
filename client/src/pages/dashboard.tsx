@@ -51,7 +51,7 @@ export default function Dashboard() {
             <div className="pl-20 lg:pl-0 flex items-center space-x-4">
               <StaticLogo size="sm" showText={false} />
               <div>
-                <h2 className="text-xl md:text-2xl font-bold text-foreground">¡Hola Darío!</h2>
+                <h2 className="text-xl md:text-2xl font-bold text-foreground">¡Hola!</h2>
                 <p className="text-sm md:text-base text-muted-foreground">Panel de control financiero</p>
               </div>
             </div>
