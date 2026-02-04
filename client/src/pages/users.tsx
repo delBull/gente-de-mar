@@ -31,7 +31,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
-import { UserPlus, Shield, Briefcase, User as UserIcon, CheckCircle2, XCircle } from "lucide-react";
+import { UserPlus, Shield, Briefcase, User as UserIcon, CheckCircle2, XCircle, ArrowLeft } from "lucide-react";
 
 interface User {
     id: number;
@@ -197,8 +197,13 @@ export default function Users() {
         <div className="container mx-auto p-6 space-y-6">
             <div className="flex justify-between items-center">
                 <div>
-                    <h1 className="text-3xl font-bold">Gestión de Usuarios</h1>
-                    <p className="text-muted-foreground">
+                    <div className="flex items-center gap-4 mb-2">
+                        <Button variant="ghost" size="icon" onClick={() => window.history.back()} className="rounded-full hover:bg-muted">
+                            <ArrowLeft className="w-5 h-5" />
+                        </Button>
+                        <h1 className="text-3xl font-bold">Gestión de Usuarios</h1>
+                    </div>
+                    <p className="text-muted-foreground ml-14">
                         Administra usuarios y sus roles en el sistema
                     </p>
                 </div>

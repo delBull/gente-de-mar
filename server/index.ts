@@ -10,6 +10,7 @@ dotenv.config();
 const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
+app.set("trust proxy", 1);
 
 // Logger para endpoints API
 app.use((req, res, next) => {

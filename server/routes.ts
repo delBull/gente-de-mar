@@ -71,6 +71,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Return user data with role-based permissions
+      if (req.session) {
+        (req.session as any).user = user;
+        await new Promise((resolve, reject) => {
+          req.session.save((err) => {
+            if (err) return reject(err);
+            resolve(true);
+          });
+        });
+      }
+
       res.json({
         user: {
           id: user.id,
