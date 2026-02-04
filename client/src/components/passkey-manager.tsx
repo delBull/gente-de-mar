@@ -94,8 +94,8 @@ export default function PasskeyManager() {
     return (
         <div className="space-y-4">
             {/* Registration Form */}
-            <div className="bg-gray-700 p-4 rounded-lg space-y-3">
-                <Label htmlFor="deviceName" className="text-white">
+            <div className="bg-muted/50 p-4 rounded-lg space-y-3 border">
+                <Label htmlFor="deviceName" className="text-foreground">
                     Registrar Nuevo Passkey
                 </Label>
                 <div className="flex gap-2">
@@ -104,42 +104,42 @@ export default function PasskeyManager() {
                         value={deviceName}
                         onChange={(e) => setDeviceName(e.target.value)}
                         placeholder="Ej: iPhone de Marco, MacBook Air"
-                        className="bg-transparent border-gray-300 text-white flex-1"
+                        className="bg-background border-input text-foreground flex-1"
                         disabled={isRegistering}
                     />
                     <Button
                         onClick={registerPasskey}
                         disabled={isRegistering || !deviceName.trim()}
-                        className="bg-blue-600 hover:bg-blue-700"
+                        className="btn-ocean-primary"
                     >
                         <Fingerprint className="w-4 h-4 mr-2" />
                         {isRegistering ? "Registrando..." : "Registrar"}
                     </Button>
                 </div>
-                <p className="text-xs text-gray-400">
+                <p className="text-xs text-muted-foreground">
                     Usa tu huella, Face ID, o llave de seguridad para autenticarte
                 </p>
             </div>
 
             {/* Passkeys List */}
             <div className="space-y-2">
-                <Label className="text-white">Passkeys Activos</Label>
+                <Label className="text-foreground">Passkeys Activos</Label>
                 {isLoading ? (
-                    <p className="text-gray-400 text-sm">Cargando...</p>
+                    <p className="text-muted-foreground text-sm">Cargando...</p>
                 ) : passkeys.length === 0 ? (
-                    <p className="text-gray-400 text-sm">No tienes passkeys registrados</p>
+                    <p className="text-muted-foreground text-sm">No tienes passkeys registrados</p>
                 ) : (
                     <div className="space-y-2">
                         {passkeys.map((passkey: any) => (
                             <div
                                 key={passkey.id}
-                                className="flex items-center justify-between bg-gray-700 p-3 rounded-lg"
+                                className="flex items-center justify-between bg-card p-3 rounded-lg border"
                             >
                                 <div className="flex items-center gap-3">
-                                    <Fingerprint className="w-5 h-5 text-blue-400" />
+                                    <Fingerprint className="w-5 h-5 text-primary" />
                                     <div>
-                                        <p className="text-white font-medium">{passkey.deviceName}</p>
-                                        <p className="text-xs text-gray-400">
+                                        <p className="text-foreground font-medium">{passkey.deviceName}</p>
+                                        <p className="text-xs text-muted-foreground">
                                             Registrado: {new Date(passkey.createdAt).toLocaleDateString()}
                                         </p>
                                     </div>
@@ -148,7 +148,7 @@ export default function PasskeyManager() {
                                     variant="ghost"
                                     size="icon"
                                     onClick={() => deletePasskeyMutation.mutate(passkey.id)}
-                                    className="text-red-400 hover:text-red-300 hover:bg-red-900/20"
+                                    className="text-destructive hover:text-destructive/90 hover:bg-destructive/10"
                                 >
                                     <Trash2 className="w-4 h-4" />
                                 </Button>

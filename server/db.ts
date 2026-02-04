@@ -15,6 +15,5 @@ if (!process.env.DATABASE_URL) {
 
 // In serverless environments like Vercel, the fetch-based neon client 
 // is often more stable than WebSockets for short-lived requests.
-export const db = process.env.VERCEL === "1"
-  ? drizzle(neon(process.env.DATABASE_URL), { schema })
-  : drizzlePool(new Pool({ connectionString: process.env.DATABASE_URL }), { schema });
+export const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+export const db = drizzlePool(pool, { schema });

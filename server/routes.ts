@@ -20,12 +20,51 @@ import type {
   RegistrationResponseJSON,
   AuthenticationResponseJSON,
 } from "@simplewebauthn/types";
+import session from "express-session";
+import connectPgSimple from "connect-pg-simple";
+import { pool } from "./db.js";
+import passport from "passport";
+
+const PgSession = connectPgSimple(session);
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Initialize database with users on server start
   log("initializing database...");
   await storage.initializeDatabase();
   log("database initialized");
+
+  // Session configuration with Postgres Store for Vercel persistence
+  app.use(session({
+    store: new PgSession({
+      pool: pool as any, // Cast to any to satisfy connect-pg-simple types
+      createTableIfMissing: true
+    }),
+    secret: process.env.SESSION_SECRET || "bookeros_secret_key",
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+      maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
+      secure: process.env.NODE_ENV === "production", // Secure in production
+      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax"
+    }
+  }));
+
+  app.use(passport.initialize());
+  app.use(passport.session());
+
+  // Serialize/Deserialize user for Passport
+  passport.serializeUser((user: any, done) => {
+    done(null, user.id);
+  });
+
+  passport.deserializeUser(async (id: number, done) => {
+    try {
+      const user = await storage.getUser(id);
+      done(null, user);
+    } catch (err) {
+      done(err);
+    }
+  });
 
   // Health check endpoints for deployment
   app.get("/health", (req, res) => {
