@@ -48,7 +48,7 @@ export default function RecentTransactions({ transactions, isLoading }: RecentTr
     );
   }
 
-  if (!transactions || transactions.length === 0) {
+  if (!transactions || !Array.isArray(transactions) || transactions.length === 0) {
     return (
       <Card className="dashboard-card">
         <CardHeader>
@@ -94,10 +94,10 @@ export default function RecentTransactions({ transactions, isLoading }: RecentTr
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
-          {transactions.slice(0, 3).map((transaction) => (
+          {Array.isArray(transactions) && transactions.slice(0, 3).map((transaction) => (
             <div key={transaction.id} className="flex items-center justify-between p-4 bg-muted rounded-lg">
               <div className="flex items-center space-x-3">
-                <img 
+                <img
                   src={getDefaultImage(transaction.tourName)}
                   alt={transaction.tourName}
                   className="w-12 h-12 rounded-lg object-cover"
@@ -105,9 +105,9 @@ export default function RecentTransactions({ transactions, isLoading }: RecentTr
                 <div>
                   <p className="font-medium text-foreground">{transaction.tourName}</p>
                   <p className="text-sm text-muted-foreground">
-                    {formatDistanceToNow(new Date(transaction.createdAt), { 
-                      addSuffix: true, 
-                      locale: es 
+                    {formatDistanceToNow(new Date(transaction.createdAt), {
+                      addSuffix: true,
+                      locale: es
                     })}
                   </p>
                 </div>

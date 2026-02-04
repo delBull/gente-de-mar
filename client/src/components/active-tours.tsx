@@ -52,7 +52,8 @@ export default function ActiveTours({ tours, isLoading }: ActiveToursProps) {
     );
   }
 
-  if (!tours || tours.length === 0) {
+  // Defensive check: ensure tours is an array
+  if (!tours || !Array.isArray(tours) || tours.length === 0) {
     return (
       <Card className="dashboard-card">
         <CardHeader>
@@ -105,7 +106,7 @@ export default function ActiveTours({ tours, isLoading }: ActiveToursProps) {
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
-          {tours.slice(0, 2).map((tour) => (
+          {Array.isArray(tours) && tours.slice(0, 2).map((tour) => (
             <div key={tour.id} className="p-4 bg-muted rounded-lg">
               <div className="flex justify-between items-start mb-3">
                 <div>
@@ -114,13 +115,13 @@ export default function ActiveTours({ tours, isLoading }: ActiveToursProps) {
                 </div>
                 {getStatusBadge(tour.status)}
               </div>
-              
-              <img 
+
+              <img
                 src={tour.imageUrl || getDefaultImage(tour.name)}
                 alt={tour.name}
                 className="w-full h-32 object-cover rounded-lg mb-3"
               />
-              
+
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Desde</span>
                 <span className="font-bold text-primary">

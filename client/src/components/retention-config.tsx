@@ -117,7 +117,7 @@ export default function RetentionConfig({ config, isLoading }: RetentionConfigPr
   const configItems = [
     {
       title: "Comisión App",
-      value: `${config.appCommissionRate}%`,
+      value: `${config?.appCommissionRate || "0"}%`,
       description: "Por transacción",
       icon: Smartphone,
       color: "text-primary",
@@ -126,7 +126,7 @@ export default function RetentionConfig({ config, isLoading }: RetentionConfigPr
     },
     {
       title: "IVA",
-      value: `${config.taxRate}%`,
+      value: `${config?.taxRate || "0"}%`,
       description: "Impuesto",
       icon: Receipt,
       color: "text-yellow-400",
@@ -135,7 +135,7 @@ export default function RetentionConfig({ config, isLoading }: RetentionConfigPr
     },
     {
       title: "Comisión Bancaria",
-      value: `${config.bankCommissionRate}%`,
+      value: `${config?.bankCommissionRate || "0"}%`,
       description: "Por pago",
       icon: Building,
       color: "text-blue-400",
@@ -144,7 +144,7 @@ export default function RetentionConfig({ config, isLoading }: RetentionConfigPr
     },
     {
       title: "Otras Retenciones",
-      value: `${config.otherRetentionsRate}%`,
+      value: `${config?.otherRetentionsRate || "0"}%`,
       description: "Configurables",
       icon: Settings,
       color: "text-purple-400",
@@ -227,8 +227,8 @@ export default function RetentionConfig({ config, isLoading }: RetentionConfigPr
                 <Button variant="outline" onClick={() => setIsEditing(false)}>
                   Cancelar
                 </Button>
-                <Button 
-                  onClick={handleSave} 
+                <Button
+                  onClick={handleSave}
                   disabled={updateConfigMutation.isPending}
                   className="bg-primary text-primary-foreground hover:bg-primary/90"
                 >
