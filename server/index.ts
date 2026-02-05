@@ -127,16 +127,14 @@ async function initializeApp() {
 }
 
 app.use(async (req, res, next) => {
-  // Allow non-API requests (static files, health checks) to bypass init wait
-  // This prevents "White Screen" if init is slow, letting the UI load first
-  if (!req.path.startsWith('/api/')) return next();
-
-  // For API requests, we MUST wait for the DB and routes to be ready
+  // We MUST wait for initialization for ALL requests (static & API)
+  // because serveStatic() is called inside initializeApp().
   try {
     await initializeApp();
     next();
   } catch (err) {
-    res.status(500).send(`Server initialization failed: ${err}`);
+    console.error("Critical: Initialization timeout or error", err);
+    res.status(500).send(`Server Error: ${err}`);
   }
 });
 
