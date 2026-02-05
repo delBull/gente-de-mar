@@ -126,11 +126,12 @@ async function initializeApp() {
   return initializationPromise;
 }
 
-// Global middleware to ensure the app is ready before processing requests
 app.use(async (req, res, next) => {
-  // if (req.path.startsWith('/api/')) return next(); // REMOVED to ensure init
+  // Allow non-API requests (static files, health checks) to bypass init wait
+  // This prevents "White Screen" if init is slow, letting the UI load first
+  if (!req.path.startsWith('/api/')) return next();
 
-
+  // For API requests, we MUST wait for the DB and routes to be ready
   try {
     await initializeApp();
     next();
