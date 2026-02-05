@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
 import { apiRequest } from "@/lib/queryClient";
 import { useResponsiveLayout } from "@/hooks/useResponsiveLayout";
 import { Plus, Edit, MapPin, DollarSign, Image as ImageIcon, Users, Info, Eye } from "lucide-react";
@@ -32,6 +33,7 @@ interface Tour {
   includes?: string[];
   sellerId?: number;
   providerId?: number;
+  businessId?: number;
 }
 
 interface User {
@@ -80,6 +82,7 @@ export default function Tours() {
 
   const [isUploading, setIsUploading] = useState(false);
 
+  const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { mainContainerClasses, contentClasses } = useResponsiveLayout();
@@ -614,15 +617,18 @@ export default function Tours() {
                               <span className="text-xl font-black">{parseFloat(tour.price).toLocaleString()}</span>
                             </div>
                           </div>
-                          <Button
-                            variant="secondary"
-                            size="sm"
-                            className="bg-gray-100 hover:bg-primary hover:text-white transition-colors"
-                            onClick={() => handleEdit(tour)}
-                          >
-                            <Edit className="w-4 h-4 mr-1" />
-                            Editar
-                          </Button>
+                          {/* Permission-based Edit Button */}
+                          {(user?.role === 'master_admin' || (user?.role === 'business' && user?.businessId === tour.businessId)) && (
+                            <Button
+                              variant="secondary"
+                              size="sm"
+                              className="bg-gray-100 hover:bg-primary hover:text-white transition-colors"
+                              onClick={() => handleEdit(tour)}
+                            >
+                              <Edit className="w-4 h-4 mr-1" />
+                              Editar
+                            </Button>
+                          )}
                         </div>
                       </div>
                     </CardContent>

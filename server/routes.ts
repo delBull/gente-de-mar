@@ -585,16 +585,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Update tour
+  // Update tour
   app.put("/api/tours/:id", async (req, res) => {
     try {
+      if (!req.isAuthenticated() || !req.user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
       const id = parseInt(req.params.id);
-      const tourData = insertTourSchema.partial().parse(req.body);
-      const tour = await storage.updateTour(id, tourData);
-      if (!tour) {
+      const user = req.user as User;
+
+      // 1. Fetch current tour to check ownership
+      const existingTour = await storage.getTour(id);
+      if (!existingTour) {
         return res.status(404).json({ message: "Tour not found" });
       }
+
+      // 2. Permission Check
+      const isMasterAdmin = user.role === 'master_admin';
+      const isOwner = user.role === 'business' && user.businessId === existingTour.businessId;
+      // Also allow creator/seller if needed, but primary check is business ownership
+      // const isCreator = existingTour.sellerId === user.id || existingTour.providerId === user.id;
+
+      if (!isMasterAdmin && !isOwner) {
+        return res.status(403).json({ message: "You do not have permission to edit this tour" });
+      }
+
+      const tourData = insertTourSchema.partial().parse(req.body);
+      const tour = await storage.updateTour(id, tourData);
+
       res.json(tour);
     } catch (error) {
+      console.error("Update tour error:", error);
       res.status(400).json({ message: "Invalid tour data" });
     }
   });
