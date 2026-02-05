@@ -150,6 +150,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const challenges = new Map<number, string>();
 
   // POST /api/webauthn/register/start - Initiate passkey registration
+  console.log("Registering WebAuthn route: /api/webauthn/register/start");
   app.post("/api/webauthn/register/start", async (req, res) => {
     try {
       // @ts-ignore - req.user is set by passport

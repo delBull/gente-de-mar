@@ -128,7 +128,8 @@ async function initializeApp() {
 
 // Global middleware to ensure the app is ready before processing requests
 app.use(async (req, res, next) => {
-  if (req.path.startsWith('/api/')) return next();
+  // if (req.path.startsWith('/api/')) return next(); // REMOVED to ensure init
+
 
   try {
     await initializeApp();
