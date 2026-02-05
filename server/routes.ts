@@ -276,8 +276,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Find credential by ID
+      // Handling Base64URL (Client) to Base64 (DB) mismatch
       const credentialId = credential.id;
-      const storedCred = await storage.getWebAuthnCredentialById(credentialId);
+      let storedCred = await storage.getWebAuthnCredentialById(credentialId);
+
+      if (!storedCred) {
+        // Try converting Base64URL to Standard Base64 (used in DB)
+        try {
+          const base64Id = Buffer.from(credentialId, "base64url").toString("base64");
+          console.log(`Retry lookup with Base64: ${base64Id}`);
+          storedCred = await storage.getWebAuthnCredentialById(base64Id);
+        } catch (e) {
+          console.error("ID conversion failed", e);
+        }
+      }
 
       if (!storedCred) {
         return res.status(400).json({ message: "Passkey not found" });
