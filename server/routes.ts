@@ -337,14 +337,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // @ts-ignore - req.login added by passport
       req.login(user, (err: any) => {
         if (err) {
+          console.error("Login error:", err);
           return res.status(500).json({ message: "Login error" });
         }
 
-        // Clear challenge
-        challenges.delete(tempKey);
+        // Force save to ensure cookie is set before response
+        req.session.save((saveErr) => {
+          if (saveErr) {
+            console.error("Session save error:", saveErr);
+          }
+          // Clear challenge
+          challenges.delete(tempKey);
 
-        const { password: _, ...safeUser } = user;
-        res.json({ user: safeUser });
+          // Remove password before sending user data to client
+          const { password: _, ...safeUser } = user;
+          res.json({
+            verified,
+            user: safeUser, // Return user data for frontend state
+          });
+        });
       });
     } catch (error) {
       console.error("Error completing authentication:", error);

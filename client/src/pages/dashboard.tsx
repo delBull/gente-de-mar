@@ -17,7 +17,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useLocation } from "wouter";
 
 export default function Dashboard() {
-  const [isMobileLayout, setIsMobileLayout] = useState(false);
+  const [isMobileLayout, setIsMobileLayout] = useState(true);
   const { mainContainerClasses, headerClasses, mainClasses } = useResponsiveLayout();
   const { user } = useAuth();
   const [, setLocation] = useLocation();
@@ -59,24 +59,6 @@ export default function Dashboard() {
             </div>
 
             <div className="flex items-center space-x-2">
-              <Button
-                variant={isMobileLayout ? "default" : "ghost"}
-                size="sm"
-                onClick={() => setIsMobileLayout(!isMobileLayout)}
-                className="text-xs flex items-center space-x-2"
-              >
-                {isMobileLayout ? (
-                  <>
-                    <Monitor className="w-4 h-4" />
-                    <span className="hidden sm:inline">Desktop</span>
-                  </>
-                ) : (
-                  <>
-                    <Smartphone className="w-4 h-4" />
-                    <span className="hidden sm:inline">Móvil</span>
-                  </>
-                )}
-              </Button>
               <Button variant="ghost" size="icon" className="text-gray-600 hover:text-gray-900">
                 <Bell className="w-5 h-5" />
               </Button>
