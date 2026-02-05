@@ -110,27 +110,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Return user data with role-based permissions
-      if (req.session) {
-        (req.session as any).user = user;
-        await new Promise((resolve, reject) => {
-          req.session.save((err) => {
-            if (err) return reject(err);
-            resolve(true);
+      req.login(user, (err) => {
+        if (err) {
+          console.error("Login session error:", err);
+          return res.status(500).json({ message: "Error initializing session" });
+        }
+
+        // Force save to ensure cookie is set
+        req.session.save((saveErr) => {
+          if (saveErr) {
+            console.error("Session save error:", saveErr);
+          }
+
+          res.json({
+            user: {
+              id: user.id,
+              username: user.username,
+              email: user.email,
+              fullName: user.fullName,
+              role: user.role,
+              businessId: user.businessId,
+              permissions: user.permissions,
+              isActive: user.isActive
+            }
           });
         });
-      }
-
-      res.json({
-        user: {
-          id: user.id,
-          username: user.username,
-          email: user.email,
-          fullName: user.fullName,
-          role: user.role,
-          businessId: user.businessId,
-          permissions: user.permissions,
-          isActive: user.isActive
-        }
       });
     } catch (error) {
       console.error("Login error:", error);
