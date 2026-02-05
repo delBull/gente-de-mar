@@ -54,23 +54,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Serialize/Deserialize user for Passport
   passport.serializeUser((user: any, done) => {
-    console.log(`Serializing user: ${user.id}`);
     done(null, user.id);
   });
 
   passport.deserializeUser(async (id: number, done) => {
-    console.log(`Deserializing user ID: ${id}`);
     try {
       const user = await storage.getUser(id);
       if (user) {
-        console.log(`User found in deserialization: ${user.id}`);
         done(null, user);
       } else {
-        console.warn(`User not found during deserialization: ${id}`);
         done(null, false);
       }
     } catch (err) {
-      console.error("Error during deserialization:", err);
       done(err);
     }
   });
@@ -125,14 +120,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return res.status(500).json({ message: "Error initializing session" });
         }
 
-        console.log(`Session initialized for user ${user.id}. Session ID: ${req.sessionID}`);
-
         // Force save to ensure cookie is set
         req.session.save((saveErr) => {
           if (saveErr) {
             console.error("Session save error:", saveErr);
-          } else {
-            console.log("Session saved successfully to store.");
           }
 
           res.json({
