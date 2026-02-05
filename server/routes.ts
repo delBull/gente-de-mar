@@ -142,6 +142,246 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json({ message: "Logged out successfully" });
   });
 
+  // Temporary storage for challenges (in production, use Redis or database)
+  const challenges = new Map<number, string>();
+
+  // POST /api/webauthn/register/start - Initiate passkey registration
+  app.post("/api/webauthn/register/start", async (req, res) => {
+    try {
+      // @ts-ignore - req.user is set by passport
+      const user = req.user as User | undefined;
+
+      if (!user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const options = await generateRegistrationOptions({
+        rpName: RP_NAME,
+        rpID: RP_ID,
+        userID: user.id.toString(),
+        userName: user.username,
+        userDisplayName: user.fullName,
+        attestationType: "none",
+        authenticatorSelection: {
+          residentKey: "preferred",
+          userVerification: "preferred",
+        },
+      });
+
+      // Store challenge for verification
+      challenges.set(user.id, options.challenge);
+
+      res.json(options);
+    } catch (error) {
+      console.error("Error generating registration options:", error);
+      res.status(500).json({ message: "Error starting passkey registration" });
+    }
+  });
+
+  // POST /api/webauthn/register/finish - Complete passkey registration
+  app.post("/api/webauthn/register/finish", async (req, res) => {
+    try {
+      // @ts-ignore
+      const user = req.user as User | undefined;
+
+      if (!user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const { credential, deviceName } = req.body;
+      const expectedChallenge = challenges.get(user.id);
+
+      if (!expectedChallenge) {
+        return res.status(400).json({ message: "No registration in progress" });
+      }
+
+      let verification: VerifiedRegistrationResponse;
+      try {
+        verification = await verifyRegistrationResponse({
+          response: credential as RegistrationResponseJSON,
+          expectedChallenge,
+          expectedOrigin: ORIGIN,
+          expectedRPID: RP_ID,
+        });
+      } catch (verifyError) {
+        console.error("Registration verification failed:", verifyError);
+        return res.status(400).json({ message: "Verification failed" });
+      }
+
+      const { verified, registrationInfo } = verification;
+
+      if (!verified || !registrationInfo) {
+        return res.status(400).json({ message: "Registration verification failed" });
+      }
+
+      // Store credential in database
+      const webauthnCredential = await storage.createWebAuthnCredential({
+        userId: user.id,
+        credentialId: Buffer.from(registrationInfo.credentialID).toString("base64"),
+        publicKey: Buffer.from(registrationInfo.credentialPublicKey).toString("base64"),
+        counter: registrationInfo.counter,
+        deviceName: deviceName || "Unknown Device",
+        transports: credential.response.transports || [],
+      });
+
+      // Clear challenge
+      challenges.delete(user.id);
+
+      res.json({
+        verified,
+        credential: webauthnCredential,
+      });
+    } catch (error) {
+      console.error("Error completing registration:", error);
+      res.status(500).json({ message: "Error completing passkey registration" });
+    }
+  });
+
+  // POST /api/webauthn/login/start - Initiate passkey login
+  app.post("/api/webauthn/login/start", async (req, res) => {
+    try {
+      const options = await generateAuthenticationOptions({
+        rpID: RP_ID,
+        userVerification: "preferred",
+      });
+
+      // Store challenge temporarily (use user's session or IP as key in production)
+      const tempKey = Date.now(); // Simplified for demo
+      challenges.set(tempKey, options.challenge);
+
+      res.json({ ...options, tempKey });
+    } catch (error) {
+      console.error("Error generating authentication options:", error);
+      res.status(500).json({ message: "Error starting passkey login" });
+    }
+  });
+
+  // POST /api/webauthn/login/finish - Complete passkey login
+  app.post("/api/webauthn/login/finish", async (req, res) => {
+    try {
+      const { credential, tempKey } = req.body;
+      const expectedChallenge = challenges.get(tempKey);
+
+      if (!expectedChallenge) {
+        return res.status(400).json({ message: "No authentication in progress" });
+      }
+
+      // Find credential by ID
+      const credentialId = credential.id;
+      const storedCred = await storage.getWebAuthnCredentialById(credentialId);
+
+      if (!storedCred) {
+        return res.status(400).json({ message: "Passkey not found" });
+      }
+
+      let verification: VerifiedAuthenticationResponse;
+      try {
+        verification = await verifyAuthenticationResponse({
+          response: credential as AuthenticationResponseJSON,
+          expectedChallenge,
+          expectedOrigin: ORIGIN,
+          expectedRPID: RP_ID,
+          authenticator: {
+            credentialID: Buffer.from(storedCred.credentialId, "base64"),
+            credentialPublicKey: Buffer.from(storedCred.publicKey, "base64"),
+            counter: storedCred.counter,
+          },
+        });
+      } catch (verifyError) {
+        console.error("Authentication verification failed:", verifyError);
+        return res.status(400).json({ message: "Verification failed" });
+      }
+
+      const { verified, authenticationInfo } = verification;
+
+      if (!verified) {
+        return res.status(400).json({ message: "Authentication failed" });
+      }
+
+      // Update counter
+      await storage.updateWebAuthnCredential(storedCred.id, {
+        counter: authenticationInfo.newCounter,
+      });
+
+      // Get user and create session
+      const user = await storage.getUserById(storedCred.userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // Update last login
+      await storage.updateUser(user.id, { lastLogin: new Date() });
+
+      // Login user via Passport
+      // @ts-ignore - req.login added by passport
+      req.login(user, (err: any) => {
+        if (err) {
+          return res.status(500).json({ message: "Login error" });
+        }
+
+        // Clear challenge
+        challenges.delete(tempKey);
+
+        const { password: _, ...safeUser } = user;
+        res.json({ user: safeUser });
+      });
+    } catch (error) {
+      console.error("Error completing authentication:", error);
+      res.status(500).json({ message: "Error completing passkey login" });
+    }
+  });
+
+  // GET /api/webauthn/credentials - Get user's passkeys
+  app.get("/api/webauthn/credentials", async (req, res) => {
+    try {
+      // @ts-ignore
+      const user = req.user as User | undefined;
+
+      if (!user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const credentials = await storage.getWebAuthnCredentialsByUserId(user.id);
+
+      // Don't send sensitive data
+      const safeCreds = credentials.map(cred => ({
+        id: cred.id,
+        deviceName: cred.deviceName,
+        createdAt: cred.createdAt,
+      }));
+
+      res.json(safeCreds);
+    } catch (error) {
+      console.error("Error fetching credentials:", error);
+      res.status(500).json({ message: "Error fetching passkeys" });
+    }
+  });
+
+  // DELETE /api/webauthn/credentials/:id - Delete a passkey
+  app.delete("/api/webauthn/credentials/:id", async (req, res) => {
+    try {
+      // @ts-ignore
+      const user = req.user as User | undefined;
+
+      if (!user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const credId = parseInt(req.params.id);
+      const credential = await storage.getWebAuthnCredentialById(credId.toString());
+
+      if (!credential || credential.userId !== user.id) {
+        return res.status(404).json({ message: "Passkey not found" });
+      }
+
+      await storage.deleteWebAuthnCredential(credId);
+      res.json({ message: "Passkey deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting credential:", error);
+      res.status(500).json({ message: "Error deleting passkey" });
+    }
+  });
+
   app.get("/api/users", async (req, res) => {
     try {
       const role = req.query.role as string;
@@ -1688,245 +1928,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     ? "https://gente-de-mar.vercel.app"
     : "http://localhost:3000";
 
-  // Temporary storage for challenges (in production, use Redis or database)
-  const challenges = new Map<number, string>();
-
-  // POST /api/webauthn/register/start - Initiate passkey registration
-  app.post("/api/webauthn/register/start", async (req, res) => {
-    try {
-      // @ts-ignore - req.user is set by passport
-      const user = req.user as User | undefined;
-
-      if (!user) {
-        return res.status(401).json({ message: "Unauthorized" });
-      }
-
-      const options = await generateRegistrationOptions({
-        rpName: RP_NAME,
-        rpID: RP_ID,
-        userID: user.id.toString(),
-        userName: user.username,
-        userDisplayName: user.fullName,
-        attestationType: "none",
-        authenticatorSelection: {
-          residentKey: "preferred",
-          userVerification: "preferred",
-        },
-      });
-
-      // Store challenge for verification
-      challenges.set(user.id, options.challenge);
-
-      res.json(options);
-    } catch (error) {
-      console.error("Error generating registration options:", error);
-      res.status(500).json({ message: "Error starting passkey registration" });
-    }
-  });
-
-  // POST /api/webauthn/register/finish - Complete passkey registration
-  app.post("/api/webauthn/register/finish", async (req, res) => {
-    try {
-      // @ts-ignore
-      const user = req.user as User | undefined;
-
-      if (!user) {
-        return res.status(401).json({ message: "Unauthorized" });
-      }
-
-      const { credential, deviceName } = req.body;
-      const expectedChallenge = challenges.get(user.id);
-
-      if (!expectedChallenge) {
-        return res.status(400).json({ message: "No registration in progress" });
-      }
-
-      let verification: VerifiedRegistrationResponse;
-      try {
-        verification = await verifyRegistrationResponse({
-          response: credential as RegistrationResponseJSON,
-          expectedChallenge,
-          expectedOrigin: ORIGIN,
-          expectedRPID: RP_ID,
-        });
-      } catch (verifyError) {
-        console.error("Registration verification failed:", verifyError);
-        return res.status(400).json({ message: "Verification failed" });
-      }
-
-      const { verified, registrationInfo } = verification;
-
-      if (!verified || !registrationInfo) {
-        return res.status(400).json({ message: "Registration verification failed" });
-      }
-
-      // Store credential in database
-      const webauthnCredential = await storage.createWebAuthnCredential({
-        userId: user.id,
-        credentialId: Buffer.from(registrationInfo.credentialID).toString("base64"),
-        publicKey: Buffer.from(registrationInfo.credentialPublicKey).toString("base64"),
-        counter: registrationInfo.counter,
-        deviceName: deviceName || "Unknown Device",
-        transports: credential.response.transports || [],
-      });
-
-      // Clear challenge
-      challenges.delete(user.id);
-
-      res.json({
-        verified,
-        credential: webauthnCredential,
-      });
-    } catch (error) {
-      console.error("Error completing registration:", error);
-      res.status(500).json({ message: "Error completing passkey registration" });
-    }
-  });
-
-  // POST /api/webauthn/login/start - Initiate passkey login
-  app.post("/api/webauthn/login/start", async (req, res) => {
-    try {
-      const options = await generateAuthenticationOptions({
-        rpID: RP_ID,
-        userVerification: "preferred",
-      });
-
-      // Store challenge temporarily (use user's session or IP as key in production)
-      const tempKey = Date.now(); // Simplified for demo
-      challenges.set(tempKey, options.challenge);
-
-      res.json({ ...options, tempKey });
-    } catch (error) {
-      console.error("Error generating authentication options:", error);
-      res.status(500).json({ message: "Error starting passkey login" });
-    }
-  });
-
-  // POST /api/webauthn/login/finish - Complete passkey login
-  app.post("/api/webauthn/login/finish", async (req, res) => {
-    try {
-      const { credential, tempKey } = req.body;
-      const expectedChallenge = challenges.get(tempKey);
-
-      if (!expectedChallenge) {
-        return res.status(400).json({ message: "No authentication in progress" });
-      }
-
-      // Find credential by ID
-      const credentialId = credential.id;
-      const storedCred = await storage.getWebAuthnCredentialById(credentialId);
-
-      if (!storedCred) {
-        return res.status(400).json({ message: "Passkey not found" });
-      }
-
-      let verification: VerifiedAuthenticationResponse;
-      try {
-        verification = await verifyAuthenticationResponse({
-          response: credential as AuthenticationResponseJSON,
-          expectedChallenge,
-          expectedOrigin: ORIGIN,
-          expectedRPID: RP_ID,
-          authenticator: {
-            credentialID: Buffer.from(storedCred.credentialId, "base64"),
-            credentialPublicKey: Buffer.from(storedCred.publicKey, "base64"),
-            counter: storedCred.counter,
-          },
-        });
-      } catch (verifyError) {
-        console.error("Authentication verification failed:", verifyError);
-        return res.status(400).json({ message: "Verification failed" });
-      }
-
-      const { verified, authenticationInfo } = verification;
-
-      if (!verified) {
-        return res.status(400).json({ message: "Authentication failed" });
-      }
-
-      // Update counter
-      await storage.updateWebAuthnCredential(storedCred.id, {
-        counter: authenticationInfo.newCounter,
-      });
-
-      // Get user and create session
-      const user = await storage.getUserById(storedCred.userId);
-      if (!user) {
-        return res.status(404).json({ message: "User not found" });
-      }
-
-      // Update last login
-      await storage.updateUser(user.id, { lastLogin: new Date() });
-
-      // Login user via Passport
-      // @ts-ignore - req.login added by passport
-      req.login(user, (err: any) => {
-        if (err) {
-          return res.status(500).json({ message: "Login error" });
-        }
-
-        // Clear challenge
-        challenges.delete(tempKey);
-
-        const { password: _, ...safeUser } = user;
-        res.json({ user: safeUser });
-      });
-    } catch (error) {
-      console.error("Error completing authentication:", error);
-      res.status(500).json({ message: "Error completing passkey login" });
-    }
-  });
-
-  // GET /api/webauthn/credentials - Get user's passkeys
-  app.get("/api/webauthn/credentials", async (req, res) => {
-    try {
-      // @ts-ignore
-      const user = req.user as User | undefined;
-
-      if (!user) {
-        return res.status(401).json({ message: "Unauthorized" });
-      }
-
-      const credentials = await storage.getWebAuthnCredentialsByUserId(user.id);
-
-      // Don't send sensitive data
-      const safeCreds = credentials.map(cred => ({
-        id: cred.id,
-        deviceName: cred.deviceName,
-        createdAt: cred.createdAt,
-      }));
-
-      res.json(safeCreds);
-    } catch (error) {
-      console.error("Error fetching credentials:", error);
-      res.status(500).json({ message: "Error fetching passkeys" });
-    }
-  });
-
-  // DELETE /api/webauthn/credentials/:id - Delete a passkey
-  app.delete("/api/webauthn/credentials/:id", async (req, res) => {
-    try {
-      // @ts-ignore
-      const user = req.user as User | undefined;
-
-      if (!user) {
-        return res.status(401).json({ message: "Unauthorized" });
-      }
-
-      const credId = parseInt(req.params.id);
-      const credential = await storage.getWebAuthnCredentialById(credId.toString());
-
-      if (!credential || credential.userId !== user.id) {
-        return res.status(404).json({ message: "Passkey not found" });
-      }
-
-      await storage.deleteWebAuthnCredential(credId);
-      res.json({ message: "Passkey deleted successfully" });
-    } catch (error) {
-      console.error("Error deleting credential:", error);
-      res.status(500).json({ message: "Error deleting passkey" });
-    }
-  });
 
   const httpServer = createServer(app);
   return httpServer;
