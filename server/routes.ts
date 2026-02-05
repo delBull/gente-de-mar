@@ -342,6 +342,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
 
         // Force save to ensure cookie is set before response
+        // Manually set session.user with type compatibility (null vs undefined)
+        req.session.user = {
+          ...user,
+          businessId: user.businessId || undefined,
+        };
+
         req.session.save((saveErr) => {
           if (saveErr) {
             console.error("Session save error:", saveErr);
