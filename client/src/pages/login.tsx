@@ -71,9 +71,16 @@ export default function Login() {
 
       if (verifyRes.ok) {
         const data = await verifyRes.json();
-        // Redirect to dashboard
+
+        // IMPORTANT: Sync state for Router by updating localStorage because useAuth reads it on mount
+        if (data.user) {
+          localStorage.setItem("auth_user", JSON.stringify(data.user));
+        }
+
+        // Redirect to dashboard (Force reload to re-mount Router with new auth state)
         setTimeout(() => {
-          setLocation("/dashboard");
+          // setLocation("/dashboard"); // Wouter internal nav might not trigger useAuth re-init
+          window.location.href = "/dashboard";
         }, 100);
       } else {
         throw new Error("Authentication failed");
